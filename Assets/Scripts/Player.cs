@@ -1,4 +1,7 @@
 using UnityEngine;
+using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
+
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
 using UnityEngine.InputSystem;
 #endif
@@ -11,18 +14,40 @@ public class Player : MonoBehaviour
     [Tooltip("移動をプレイヤーの向きに合わせるための参照（未設定時はこの GameObject の Transform を使用）")]
     public Transform orientation;
 
-    Rigidbody rb;
+    [Header("Effect Settings")]
+    [Tooltip("生成するエフェクトのプレハブ")]
+    public GameObject effectPrefab;
+    [Tooltip("同時に存在できる最大数")]
+    public int maxEffectCount = 5;
+    [Tooltip("エフェクトが自動消滅するまでの時間(秒)")]
+    public float effectLifetime = 2.0f;
+    [Tooltip("エフェクトを表示するCanvas（RectTransform）")]
+    public RectTransform uiRoot;
 
+    private Rigidbody _rb;
+    private List<GameObject> _activeEffects = new List<GameObject>();
+
+    /// <summary>
+    /// コンポーネントの初期化と参照の解決を行います。
+    /// </summary>
     void Start()
     {
-        rb = GetComponent<Rigidbody>();
+        _rb = GetComponent<Rigidbody>();
         if (orientation == null) orientation = transform;
     }
 
+    /// <summary>
+    /// 毎フレームの入力監視と、Rigidbody を使用しない場合の移動処理を行います。
+    /// </summary>
     void Update()
     {
-        // Rigidbody がアタッチされていない場合は Transform を直接移動
-        if (rb == null)
+        // スペースキーが押されたらエフェクトを生成して発火
+        if (IsSpacePressed() && effectPrefab != null)
+        {
+            SpawnEffect();
+        }
+
+        if (_rb == null)
         {
             Vector3 input = GetInput();
             if (input.sqrMagnitude > 0f)
@@ -41,10 +66,74 @@ public class Player : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// エフェクトの生成、リスト管理、および再生開始を行います。
+    /// 最大数に達している場合は古いエフェクトを破棄します。
+    /// </summary>
+    private void SpawnEffect()
+    {
+        SoundManager.Instance.PlaySE("bite");
+        // 1. 寿命などで既に消滅したエフェクトの参照をリストから削除
+        _activeEffects.RemoveAll(e => e == null);
+
+        // 2. 最大数を超えている場合は、一番古いエフェクトを即座に破棄して枠を空ける
+        if (_activeEffects.Count >= maxEffectCount)
+        {
+            if (_activeEffects[0] != null) Destroy(_activeEffects[0]);
+            _activeEffects.RemoveAt(0);
+        }
+
+        // 3. エフェクトを生成し、Canvas(uiRoot) の子要素にする
+        GameObject effect = Instantiate(effectPrefab, uiRoot);
+        _activeEffects.Add(effect);
+
+        // 4. エフェクトの発火（ParticleController または Animator）
+        if (effect.TryGetComponent<ParticleController>(out var controller))
+        {
+            // ParticleController が付いている場合はランダム回転などのロジックを実行
+            controller.PlayParticle();
+            // パーティクルの場合は指定秒数で破棄
+            Destroy(effect, effectLifetime);
+        }
+        else if (effect.TryGetComponent<Animator>(out var animator))
+        {
+            // Animator のみの場合は直接 "bite" ステートを再生
+            animator.Play("bite", 0, 0f);
+            // 非同期でアニメーション終了を待機して破棄
+            WaitAndDestroy(effect, animator).Forget();
+        }
+        else
+        {
+            // コンポーネントがない場合のフォールバック
+            Destroy(effect, effectLifetime);
+        }
+    }
+
+    private async UniTask WaitAndDestroy(GameObject target, Animator animator)
+    {
+        // ターゲットが破棄されたらタスクを自動中断するトークン
+        var token = target.GetCancellationTokenOnDestroy();
+
+        // アニメーションの計算が開始されるまで待機
+        await UniTask.Yield(token);
+
+        // 対象が削除されず、かつアニメーションが再生中の間ループで待機
+        // normalizedTime が 1.0 を超えたら再生終了とみなす
+        while (animator != null && animator.GetCurrentAnimatorStateInfo(0).normalizedTime < 1.0f)
+        {
+            await UniTask.Yield(token);
+        }
+
+        if (target != null) Destroy(target);
+    }
+
+    /// <summary>
+    /// 物理演算（Rigidbody）に基づいた移動処理を一定間隔で実行します。
+    /// </summary>
     void FixedUpdate()
     {
         // Rigidbody があれば物理移動
-        if (rb != null)
+        if (_rb != null)
         {
             Vector3 input = GetInput();
             if (input.sqrMagnitude > 0f)
@@ -58,13 +147,17 @@ public class Player : MonoBehaviour
                 right.Normalize();
 
                 Vector3 move = (forward * input.z + right * input.x).normalized;
-                Vector3 target = rb.position + move * speed * Time.fixedDeltaTime;
-                rb.MovePosition(target);
+                Vector3 target = _rb.position + move * speed * Time.fixedDeltaTime;
+                _rb.MovePosition(target);
             }
         }
     }
 
-    // WASD / 矢印キー に対応した入力を返す
+    /// <summary>
+    /// 入力デバイスから移動ベクトルを取得します。
+    /// 新旧両方の Input System に対応しています。
+    /// </summary>
+    /// <returns>正規化された入力方向（XZ平面）</returns>
     Vector3 GetInput()
     {
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
@@ -89,6 +182,21 @@ public class Player : MonoBehaviour
         Vector3 dir = new Vector3(h, 0f, v);
         if (dir.sqrMagnitude > 1f) dir.Normalize();
         return dir;
+#endif
+    }
+
+    /// <summary>
+    /// エフェクト発火ボタンが押されたかどうかを判定します。
+    /// </summary>
+    /// <returns>押された瞬間のフレームであれば true</returns>
+    bool IsSpacePressed()
+    {
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+        bool keyboardSpace = Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame;
+        bool gamepadSouth = Gamepad.current != null && Gamepad.current.buttonSouth.wasPressedThisFrame;
+        return keyboardSpace || gamepadSouth;
+#else
+        return Input.GetKeyDown(KeyCode.Space);
 #endif
     }
 }
