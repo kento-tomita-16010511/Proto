@@ -41,8 +41,8 @@ public class Player : MonoBehaviour
     /// </summary>
     void Update()
     {
-        // スペースキーが押されたらエフェクトを生成して発火
-        if (IsSpacePressed() && effectPrefab != null)
+        // 攻撃ボタン（クリック）が押されたらエフェクトを生成して発火
+        if (IsAttackPressed() && effectPrefab != null)
         {
             SpawnEffect();
         }
@@ -72,7 +72,7 @@ public class Player : MonoBehaviour
     /// </summary>
     private void SpawnEffect()
     {
-        SoundManager.Instance.PlaySE("bite");
+        SoundManager.Instance.PlaySEWithRandomPitch("bite");
         // 1. 寿命などで既に消滅したエフェクトの参照をリストから削除
         _activeEffects.RemoveAll(e => e == null);
 
@@ -186,17 +186,17 @@ public class Player : MonoBehaviour
     }
 
     /// <summary>
-    /// エフェクト発火ボタンが押されたかどうかを判定します。
+    /// 攻撃ボタン（マウスの左クリック）が押されたかどうかを判定します。
     /// </summary>
     /// <returns>押された瞬間のフレームであれば true</returns>
-    bool IsSpacePressed()
+    bool IsAttackPressed()
     {
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-        bool keyboardSpace = Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame;
+        bool mouseClick = Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame;
         bool gamepadSouth = Gamepad.current != null && Gamepad.current.buttonSouth.wasPressedThisFrame;
-        return keyboardSpace || gamepadSouth;
+        return mouseClick || gamepadSouth;
 #else
-        return Input.GetKeyDown(KeyCode.Space);
+        return Input.GetMouseButtonDown(0);
 #endif
     }
 }
