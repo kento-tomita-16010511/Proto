@@ -1,9 +1,12 @@
 using UnityEngine;
 using TMPro;
+using System;
 
 public class TimerController : MonoBehaviour
 {
     [SerializeField] private float startSeconds = 60f;
+
+    public event Action OnTimeUp;
 
     private TMP_Text _text;
     private float _remaining;
@@ -26,6 +29,7 @@ public class TimerController : MonoBehaviour
         {
             _remaining = 0f;
             _running = false;
+            OnTimeUp?.Invoke();
         }
         UpdateDisplay();
     }

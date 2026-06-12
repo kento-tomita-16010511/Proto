@@ -458,6 +458,7 @@ GameObject:
   - component: {fileID: 120674175278399982}
   - component: {fileID: 9003410764456430701}
   - component: {fileID: 4203687711656398374}
+  - component: {fileID: 4322393835026236346}
   m_Layer: 0
   m_Name: Dog_001
   m_TagString: Untagged
@@ -553,6 +554,20 @@ MonoBehaviour:
     body: 0.3
     head: 0.7
     eyes: 1
+--- !u!114 &4322393835026236346
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2629182449500102118}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8950a4a40bebca0489853d9739c6b906, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AnimalEnemy
+  maxHP: 100
+  scoreValue: 10
 --- !u!1 &2735724662372591797
 GameObject:
   m_ObjectHideFlags: 0

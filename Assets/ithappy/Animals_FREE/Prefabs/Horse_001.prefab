@@ -652,6 +652,7 @@ GameObject:
   - component: {fileID: 3851015956068934398}
   - component: {fileID: 3851015956068934393}
   - component: {fileID: 3851015956068934392}
+  - component: {fileID: 7608959410385136671}
   m_Layer: 0
   m_Name: Horse_001
   m_TagString: Untagged
@@ -747,6 +748,20 @@ MonoBehaviour:
     body: 0.3
     head: 0.7
     eyes: 1
+--- !u!114 &7608959410385136671
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3851015956068934394}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8950a4a40bebca0489853d9739c6b906, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AnimalEnemy
+  maxHP: 100
+  scoreValue: 10
 --- !u!1 &3955406351709833468
 GameObject:
   m_ObjectHideFlags: 0
