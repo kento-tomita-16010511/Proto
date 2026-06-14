@@ -2,10 +2,6 @@ using UnityEngine;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 
-#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-using UnityEngine.InputSystem;
-#endif
-
 public class Player : MonoBehaviour
 {
     [Tooltip("移動速度（m/s）")]
@@ -29,17 +25,25 @@ public class Player : MonoBehaviour
     private Rigidbody _rb;
     private Animator _animator;
     private List<GameObject> _activeEffects = new List<GameObject>();
-    private bool _inputEnabled = true;
 
     public void SetInputEnabled(bool enabled)
     {
-        _inputEnabled = enabled;
+        if (InputManager.Instance != null)
+            InputManager.Instance.IsEnabled = enabled;
         if (!enabled && _animator != null)
         {
             _animator.SetBool("IsMoving", false);
             _animator.SetTrigger("GameOverTrigger");
         }
     }
+
+/// <summary>Intimidation（威嚇）アニメーションを再生する。リザルト演出で呼ぶ。</summary>
+    public void PlayIntimidation()
+    {
+        if (_animator != null)
+            _animator.SetTrigger("IntimidationTrigger");
+    }
+
 
     void Start()
     {
@@ -54,15 +58,11 @@ public class Player : MonoBehaviour
 
     void Update()
     {
-        if (!_inputEnabled) return;
-
-        // 移動入力の取得 → IsMoving を毎フレーム更新
-        Vector3 input = GetInput();
+        Vector3 input = InputManager.Instance?.MoveInput ?? Vector3.zero;
         bool isMoving = input.sqrMagnitude > 0.01f;
         _animator?.SetBool("IsMoving", isMoving);
 
-        // 攻撃入力
-        if (IsAttackPressed() && effectPrefab != null)
+        if ((InputManager.Instance?.AttackPressedThisFrame ?? false) && effectPrefab != null)
         {
             SpawnEffect();
             TryHitEnemy();
@@ -85,13 +85,7 @@ public class Player : MonoBehaviour
         Camera cam = Camera.main;
         if (cam == null) return;
 
-#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-        if (Mouse.current == null) return;
-        Vector2 screenPos = Mouse.current.position.ReadValue();
-#else
-        Vector2 screenPos = Input.mousePosition;
-#endif
-
+        Vector2 screenPos = InputManager.Instance?.MouseScreenPosition ?? Vector2.zero;
         Ray ray = cam.ScreenPointToRay(new Vector3(screenPos.x, screenPos.y, 0f));
         if (Physics.Raycast(ray, out RaycastHit hit, attackRange))
         {
@@ -139,8 +133,8 @@ public class Player : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (!_inputEnabled || _rb == null) return;
-        Vector3 input = GetInput();
+        if (_rb == null) return;
+        Vector3 input = InputManager.Instance?.MoveInput ?? Vector3.zero;
         if (input.sqrMagnitude > 0f)
         {
             Vector3 forward = orientation.forward;
@@ -153,38 +147,4 @@ public class Player : MonoBehaviour
         }
     }
 
-    Vector3 GetInput()
-    {
-#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-        Vector2 move = Vector2.zero;
-        if (Keyboard.current != null)
-        {
-            if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed)  move.x -= 1f;
-            if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed) move.x += 1f;
-            if (Keyboard.current.wKey.isPressed || Keyboard.current.upArrowKey.isPressed)    move.y += 1f;
-            if (Keyboard.current.sKey.isPressed || Keyboard.current.downArrowKey.isPressed)  move.y -= 1f;
-        }
-        if (Gamepad.current != null) move += Gamepad.current.leftStick.ReadValue();
-        Vector3 dirNew = new Vector3(move.x, 0f, move.y);
-        if (dirNew.sqrMagnitude > 1f) dirNew.Normalize();
-        return dirNew;
-#else
-        float h = Input.GetAxisRaw("Horizontal");
-        float v = Input.GetAxisRaw("Vertical");
-        Vector3 dir = new Vector3(h, 0f, v);
-        if (dir.sqrMagnitude > 1f) dir.Normalize();
-        return dir;
-#endif
-    }
-
-    bool IsAttackPressed()
-    {
-#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-        bool mouseClick  = Mouse.current   != null && Mouse.current.leftButton.wasPressedThisFrame;
-        bool gamepadSouth = Gamepad.current != null && Gamepad.current.buttonSouth.wasPressedThisFrame;
-        return mouseClick || gamepadSouth;
-#else
-        return Input.GetMouseButtonDown(0);
-#endif
-    }
 }

@@ -2,25 +2,49 @@ using UnityEngine;
 using TMPro;
 using System;
 
+/// <summary>ゲーム内タイマーの計測と表示を担うコンポーネント。</summary>
 public class TimerController : MonoBehaviour
 {
+    /// <summary>カウントダウン開始秒数。</summary>
     [SerializeField] private float startSeconds = 60f;
 
+    /// <summary>
+    /// タイマーの残り時間を表示する TMP_Text。
+    /// 省略時は同一 GO の TMP_Text を自動取得する。別 GO の TMP_Text も Inspector でアサイン可能。
+    /// </summary>
+    [SerializeField] private TMP_Text timerDisplay;
+
+    /// <summary>タイムアップ時に発行されるイベント。</summary>
     public event Action OnTimeUp;
 
-    private TMP_Text _text;
-    private float _remaining;
-    private bool _running;
+    /// <summary>現在の残り時間（秒）。</summary>
+    public float Remaining => _remaining;
 
-    void Start()
+    /// <summary>タイマー開始からの経過時間（秒）。</summary>
+    public float ElapsedTime => startSeconds - _remaining;
+
+    private float _remaining;
+    private bool  _running;
+
+    private void Start()
     {
-        _text = GetComponent<TMP_Text>();
+        if (timerDisplay == null) timerDisplay = GetComponent<TMP_Text>();
         _remaining = startSeconds;
-        _running = true;
+        _running   = false;   // StartTimer() が呼ばれるまで計測しない
         UpdateDisplay();
     }
 
-    void Update()
+    /// <summary>
+    /// タイマーを開始する。
+    /// CountdownPresenter が GO!! 表示タイミングで呼び出す。
+    /// </summary>
+    public void StartTimer()
+    {
+        _remaining = startSeconds;
+        _running   = true;
+    }
+
+    private void Update()
     {
         if (!_running) return;
 
@@ -28,7 +52,7 @@ public class TimerController : MonoBehaviour
         if (_remaining <= 0f)
         {
             _remaining = 0f;
-            _running = false;
+            _running   = false;
             OnTimeUp?.Invoke();
         }
         UpdateDisplay();
@@ -36,6 +60,7 @@ public class TimerController : MonoBehaviour
 
     private void UpdateDisplay()
     {
-        _text.text = Mathf.CeilToInt(_remaining).ToString();
+        if (timerDisplay != null)
+            timerDisplay.text = Mathf.CeilToInt(_remaining).ToString();
     }
 }
