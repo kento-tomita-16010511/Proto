@@ -22,6 +22,9 @@ public class TitlePresenter : MonoBehaviour
     /// <summary>ゲーム設定 Model（ScriptableObject）。</summary>
     [SerializeField] private GameConfig config;
 
+    /// <summary>設定画面の Presenter。</summary>
+    [SerializeField] private SettingsPresenter settingsPresenter;
+
     private void Awake()
     {
         Debug.Log("[TitlePresenter] Awake scene=" + gameObject.scene.name);
@@ -57,6 +60,10 @@ public class TitlePresenter : MonoBehaviour
 
         view.OnQuitButtonClicked
             .Subscribe(_ => HandleQuit())
+            .AddTo(this);
+
+        view.OnSettingsButtonClicked
+            .Subscribe(_ => settingsPresenter?.OpenAsync(ct).Forget())
             .AddTo(this);
 
         PlayIntroAsync(ct).Forget();

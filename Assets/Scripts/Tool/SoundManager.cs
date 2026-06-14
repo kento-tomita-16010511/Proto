@@ -27,19 +27,53 @@ public class SoundManager : MonoBehaviour
     private Dictionary<string, AudioClip> _bgmDictionary = new Dictionary<string, AudioClip>();
     private Dictionary<string, AudioClip> _seDictionary = new Dictionary<string, AudioClip>();
 
+    private const string BgmVolumeKey = "BGMVolume";
+    private const string SeVolumeKey  = "SEVolume";
+
+    /// <summary>現在の BGM 音量（0〜1）。</summary>
+    public float BGMVolume => _bgmSource != null ? _bgmSource.volume : 1f;
+
+    /// <summary>現在の SE 音量（0〜1）。</summary>
+    public float SEVolume  => _seSource  != null ? _seSource.volume  : 1f;
+
     private void Awake()
     {
-        // シングルトンの設定
         if (Instance == null)
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
             InitializeDictionaries();
+            LoadVolumes();
         }
         else
         {
             Destroy(gameObject);
         }
+    }
+
+    /// <summary>PlayerPrefs から保存済み音量を読み込んで AudioSource に適用する。</summary>
+    private void LoadVolumes()
+    {
+        if (_bgmSource != null) _bgmSource.volume = PlayerPrefs.GetFloat(BgmVolumeKey, 1f);
+        if (_seSource  != null) _seSource.volume  = PlayerPrefs.GetFloat(SeVolumeKey,  1f);
+    }
+
+    /// <summary>BGM 音量を設定して PlayerPrefs に保存する。</summary>
+    public void SetBGMVolume(float volume)
+    {
+        volume = Mathf.Clamp01(volume);
+        if (_bgmSource != null) _bgmSource.volume = volume;
+        PlayerPrefs.SetFloat(BgmVolumeKey, volume);
+        PlayerPrefs.Save();
+    }
+
+    /// <summary>SE 音量を設定して PlayerPrefs に保存する。</summary>
+    public void SetSEVolume(float volume)
+    {
+        volume = Mathf.Clamp01(volume);
+        if (_seSource != null) _seSource.volume = volume;
+        PlayerPrefs.SetFloat(SeVolumeKey, volume);
+        PlayerPrefs.Save();
     }
 
     /// <summary>

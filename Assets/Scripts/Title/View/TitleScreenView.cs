@@ -23,14 +23,21 @@ public class TitleScreenView : MonoBehaviour
     /// <summary>ゲーム終了ボタン（省略可）。</summary>
     [SerializeField] private Button quitButton;
 
-    private readonly Subject<Unit> _onStartButtonClicked = new Subject<Unit>();
-    private readonly Subject<Unit> _onQuitButtonClicked  = new Subject<Unit>();
+    /// <summary>設定ボタン（省略可）。</summary>
+    [SerializeField] private Button settingsButton;
+
+    private readonly Subject<Unit> _onStartButtonClicked    = new Subject<Unit>();
+    private readonly Subject<Unit> _onQuitButtonClicked     = new Subject<Unit>();
+    private readonly Subject<Unit> _onSettingsButtonClicked = new Subject<Unit>();
 
     /// <summary>スタートボタンが押されたときに発行されるストリーム。</summary>
     public IObservable<Unit> OnStartButtonClicked => _onStartButtonClicked;
 
     /// <summary>終了ボタンが押されたときに発行されるストリーム。</summary>
     public IObservable<Unit> OnQuitButtonClicked  => _onQuitButtonClicked;
+
+    /// <summary>設定ボタンが押されたときに発行されるストリーム。</summary>
+    public IObservable<Unit> OnSettingsButtonClicked => _onSettingsButtonClicked;
 
     /// <summary>起動時に全 CanvasGroup を非表示・非インタラクティブ状態に初期化する。</summary>
     private void Awake()
@@ -49,6 +56,11 @@ public class TitleScreenView : MonoBehaviour
         if (quitButton != null)
             quitButton.onClick.AsObservable()
                 .Subscribe(_ => _onQuitButtonClicked.OnNext(Unit.Default))
+                .AddTo(this);
+
+        if (settingsButton != null)
+            settingsButton.onClick.AsObservable()
+                .Subscribe(_ => _onSettingsButtonClicked.OnNext(Unit.Default))
                 .AddTo(this);
     }
 

@@ -37,7 +37,7 @@ public class Player : MonoBehaviour
         }
     }
 
-/// <summary>Intimidation（威嚇）アニメーションを再生する。リザルト演出で呼ぶ。</summary>
+    /// <summary>Intimidation（威嚇）アニメーションを再生する。リザルト演出で呼ぶ。</summary>
     public void PlayIntimidation()
     {
         if (_animator != null)
@@ -53,6 +53,7 @@ public class Player : MonoBehaviour
         {
             if (a.runtimeAnimatorController != null) { _animator = a; break; }
         }
+        _animator?.SetTrigger("Idle");
         if (orientation == null) orientation = transform;
     }
 
@@ -72,7 +73,7 @@ public class Player : MonoBehaviour
         if (_rb == null && isMoving)
         {
             Vector3 forward = orientation.forward;
-            Vector3 right   = orientation.right;
+            Vector3 right = orientation.right;
             forward.y = 0f; right.y = 0f;
             forward.Normalize(); right.Normalize();
             Vector3 move = (forward * input.z + right * input.x).normalized;
@@ -138,11 +139,11 @@ public class Player : MonoBehaviour
         if (input.sqrMagnitude > 0f)
         {
             Vector3 forward = orientation.forward;
-            Vector3 right   = orientation.right;
+            Vector3 right = orientation.right;
             forward.y = 0f; right.y = 0f;
             forward.Normalize(); right.Normalize();
-            Vector3 move  = (forward * input.z + right * input.x).normalized;
-            Vector3 tgt   = _rb.position + move * speed * Time.fixedDeltaTime;
+            Vector3 move = (forward * input.z + right * input.x).normalized;
+            Vector3 tgt = _rb.position + move * speed * Time.fixedDeltaTime;
             _rb.MovePosition(tgt);
         }
     }
