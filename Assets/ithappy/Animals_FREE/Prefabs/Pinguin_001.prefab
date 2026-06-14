@@ -170,6 +170,9 @@ GameObject:
   - component: {fileID: 2197702747431416027}
   - component: {fileID: 2197702747431416024}
   - component: {fileID: 2197702747431416025}
+  - component: {fileID: 9091058817286033504}
+  - component: {fileID: 8630431548009652936}
+  - component: {fileID: 5202225536994126275}
   m_Layer: 0
   m_Name: Pinguin_001
   m_TagString: Untagged
@@ -265,6 +268,47 @@ MonoBehaviour:
     body: 0.3
     head: 0.7
     eyes: 1
+--- !u!114 &9091058817286033504
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1527881004230699645}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8950a4a40bebca0489853d9739c6b906, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AnimalEnemy
+  maxHP: 100
+  scoreValue: 10
+--- !u!114 &8630431548009652936
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1527881004230699645}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 35d715b26fc1b9a42825acca26cb5894, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyPresenter
+  enemyStateTemplate: {fileID: 11400000, guid: c194602cd983bee4780e48032833a170, type: 2}
+  view: {fileID: 6573582005355188743, guid: 6b0b0b098177a3b439c80991ec9deacc, type: 3}
+--- !u!114 &5202225536994126275
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1527881004230699645}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b0bb5632d029fe4a8ecefbe63cb35cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyView
+  agent: {fileID: 0}
 --- !u!1 &1594975112139590255
 GameObject:
   m_ObjectHideFlags: 0

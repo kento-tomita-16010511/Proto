@@ -935,6 +935,9 @@ GameObject:
   - component: {fileID: 5883155896844355906}
   - component: {fileID: 5883155896844355907}
   - component: {fileID: 5883155896844355916}
+  - component: {fileID: 1068583758807684713}
+  - component: {fileID: -2844722478729145114}
+  - component: {fileID: -3736783923578216179}
   m_Layer: 0
   m_Name: Tiger_001
   m_TagString: Untagged
@@ -1030,6 +1033,47 @@ MonoBehaviour:
     body: 0.3
     head: 0.7
     eyes: 1
+--- !u!114 &1068583758807684713
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5883155896844355918}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8950a4a40bebca0489853d9739c6b906, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AnimalEnemy
+  maxHP: 100
+  scoreValue: 10
+--- !u!114 &-2844722478729145114
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5883155896844355918}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 35d715b26fc1b9a42825acca26cb5894, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyPresenter
+  enemyStateTemplate: {fileID: 11400000, guid: c194602cd983bee4780e48032833a170, type: 2}
+  view: {fileID: 6573582005355188743, guid: 6b0b0b098177a3b439c80991ec9deacc, type: 3}
+--- !u!114 &-3736783923578216179
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5883155896844355918}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b0bb5632d029fe4a8ecefbe63cb35cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyView
+  agent: {fileID: 0}
 --- !u!1 &6083925854692512673
 GameObject:
   m_ObjectHideFlags: 0

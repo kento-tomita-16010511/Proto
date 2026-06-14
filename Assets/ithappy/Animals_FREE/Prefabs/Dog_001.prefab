@@ -459,6 +459,8 @@ GameObject:
   - component: {fileID: 9003410764456430701}
   - component: {fileID: 4203687711656398374}
   - component: {fileID: 4322393835026236346}
+  - component: {fileID: -7202424053532771697}
+  - component: {fileID: -7737620938010451284}
   m_Layer: 0
   m_Name: Dog_001
   m_TagString: Untagged
@@ -568,6 +570,33 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AnimalEnemy
   maxHP: 100
   scoreValue: 10
+--- !u!114 &-7202424053532771697
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2629182449500102118}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 35d715b26fc1b9a42825acca26cb5894, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyPresenter
+  enemyStateTemplate: {fileID: 11400000, guid: c194602cd983bee4780e48032833a170, type: 2}
+  view: {fileID: 6573582005355188743, guid: 6b0b0b098177a3b439c80991ec9deacc, type: 3}
+--- !u!114 &-7737620938010451284
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2629182449500102118}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b0bb5632d029fe4a8ecefbe63cb35cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyView
+  agent: {fileID: 0}
 --- !u!1 &2735724662372591797
 GameObject:
   m_ObjectHideFlags: 0
