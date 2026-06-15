@@ -10,15 +10,19 @@ using UnityEngine.UI;
 [RequireComponent(typeof(Button))]
 public class SettingsOpenButton : MonoBehaviour
 {
-    /// <summary>開く対象の SettingsPresenter。</summary>
-    [SerializeField] private SettingsPresenter settingsPresenter;
+    /// <summary>開く対象の設定ポップアップ prefab。</summary>
+    [SerializeField] private SettingsPopup settingsPopupPrefab;
 
     private void Start()
     {
         var ct = this.GetCancellationTokenOnDestroy();
         GetComponent<Button>()
             .onClick.AsObservable()
-            .Subscribe(_ => settingsPresenter?.OpenAsync(ct).Forget())
+            .Subscribe(_ =>
+            {
+                if (settingsPopupPrefab != null)
+                    PopupManager.Instance?.ShowAsync(settingsPopupPrefab, ct).Forget();
+            })
             .AddTo(this);
     }
 }

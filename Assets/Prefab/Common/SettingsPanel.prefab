@@ -431,8 +431,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5206133745436258051}
   - component: {fileID: 4306967880246545587}
-  - component: {fileID: 8551284600681276200}
-  - component: {fileID: 3771277705522740858}
+  - component: {fileID: 5101566618409773443}
   m_Layer: 0
   m_Name: SettingsPanel
   m_TagString: Untagged
@@ -473,7 +472,7 @@ CanvasGroup:
   m_Interactable: 0
   m_BlocksRaycasts: 0
   m_IgnoreParentGroups: 0
---- !u!114 &8551284600681276200
+--- !u!114 &5101566618409773443
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -482,27 +481,14 @@ MonoBehaviour:
   m_GameObject: {fileID: 2263114522371966008}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a47c5d0951746c5449f5bc4116038485, type: 3}
+  m_Script: {fileID: 11500000, guid: adcd29951a9b6f246b46e1450bbed10f, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SettingsView
+  m_EditorClassIdentifier: Assembly-CSharp::SettingsPopup
   canvasGroup: {fileID: 4306967880246545587}
+  fadeDuration: 0.15
   bgmSlider: {fileID: 8058665408302574826}
   seSlider: {fileID: 409618339461936477}
   closeButton: {fileID: 5319769224693311876}
---- !u!114 &3771277705522740858
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2263114522371966008}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4f3dfae155e7eb8468898679a2896e87, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SettingsPresenter
-  view: {fileID: 8551284600681276200}
-  config: {fileID: 11400000, guid: 2923e05c4a466a043910bd8e5705f404, type: 2}
 --- !u!1 &3027994622375187911
 GameObject:
   m_ObjectHideFlags: 0

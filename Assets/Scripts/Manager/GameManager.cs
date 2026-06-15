@@ -22,12 +22,15 @@ public class GameManager : MonoBehaviour
     [Tooltip("ゲーム終了時にメインカメラを移動させる位置・向きを示す Transform。")]
     [SerializeField] private Transform resultCameraAnchor;
 
-    /// <summary>設定画面の Presenter。</summary>
-    [SerializeField] private SettingsPresenter settingsPresenter;
+    /// <summary>設定ポップアップの prefab。ESC 押下時に都度生成する。</summary>
+    [SerializeField] private SettingsPopup settingsPopupPrefab;
 
     [SerializeField] private MainSceneActivatorPresenter mainSceneActivator;
 
     private Camera _mainCamera;
+
+    /// <summary>現在表示中の設定ポップアップ（未表示なら null）。</summary>
+    private SettingsPopup _activePopup;
 
     private void Start()
     {
@@ -35,22 +38,47 @@ public class GameManager : MonoBehaviour
         if (timerController != null)
             timerController.OnTimeUp += HandleTimeUp;
 
-        InputManager.Instance.IsEscapePressed.Subscribe(isPressed =>
-        {
-            if (isPressed)
+        // Skip(1) で ReactiveProperty の購読時初期値発火を無視する。
+        // これを怠ると MainScene ロード時（タイトル画面背景）に初期値 false が流れ、
+        // else ブランチの UnfreezeAll() が走って入力が早期有効化されてしまう。
+        InputManager.Instance.IsEscapePressed
+            .Skip(1)
+            .Subscribe(isPressed =>
             {
-                Time.timeScale = 0f;
-                settingsPresenter?.OpenAsync(this.GetCancellationTokenOnDestroy()).Forget();
-                mainSceneActivator?.FreezeAll();
-            }
-            else
+                if (isPressed)
+                {
+                    // ポーズ（timeScale + Freeze）は GameManager が担当し、
+                    // ポップアップの生成・表示は PopupManager に委譲する（機能分離）。
+                    Time.timeScale = 0f;
+                    mainSceneActivator?.FreezeAll();
+                    OpenSettingsAsync(this.GetCancellationTokenOnDestroy()).Forget();
+                }
+                else
+                {
+                    // 設定が閉じられた時にゲームを再開させる
+                    _activePopup?.RequestClose();
+                    Time.timeScale = 1f;
+                    mainSceneActivator?.UnfreezeAll();
+                }
+            })
+            .AddTo(this);
+    }
+
+    /// <summary>設定ポップアップを生成・表示し、閉じられたら ESC トグル状態を同期する。</summary>
+    private async UniTaskVoid OpenSettingsAsync(CancellationToken ct)
+    {
+        if (_activePopup != null || PopupManager.Instance == null || settingsPopupPrefab == null) return;
+
+        _activePopup = await PopupManager.Instance.ShowAsync(settingsPopupPrefab, ct);
+        _activePopup.OnClosed
+            .Subscribe(_ =>
             {
-                // 設定画面が閉じられた時にゲームを再開させる
-                Time.timeScale = 1f;
-                mainSceneActivator?.UnfreezeAll();
-            }
-        })
-        .AddTo(this);
+                _activePopup = null;
+                // 閉じるボタンで閉じた場合に ESC トグル状態を false へ同期する。
+                if (InputManager.Instance != null)
+                    InputManager.Instance.IsEscapePressed.Value = false;
+            })
+            .AddTo(this);
     }
 
     private void OnDestroy()

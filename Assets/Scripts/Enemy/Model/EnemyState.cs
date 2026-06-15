@@ -2,7 +2,7 @@ using UnityEngine;
 using UniRx;
 
 /// <summary>エネミーの行動状態を表す列挙体。</summary>
-public enum EnemyBehavior { Idle, Fleeing }
+public enum EnemyBehavior { Idle, Fleeing, Stunned }
 
 /// <summary>
 /// エネミーの検知パラメータと現在の行動状態を保持する ScriptableObject。

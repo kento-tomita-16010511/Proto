@@ -22,8 +22,28 @@ public class Player : MonoBehaviour, IFreezable
     [Tooltip("1回の攻撃ダメージ")]
     public int attackDamage = 100;
 
+    [Tooltip("攻撃 / Net モーション中ロックの最大時間（秒）。アニメ終了検知のフェイルセーフ。")]
+    public float maxActionDuration = 2f;
+
+    [Header("Net (Web) Settings")]
+    [Tooltip("プレイヤーの調整可能ステータス（Net の停止時間などを保持）")]
+    [SerializeField] private PlayerStats stats;
+    [Tooltip("Net で生成する蜘蛛の巣エフェクト（FX_SpiderWeb_Impact）")]
+    [SerializeField] private GameObject webImpactPrefab;
+    [Tooltip("エフェクトを生成する前方距離（m）")]
+    [SerializeField] private float webSpawnDistance = 1.5f;
+
     private Animator _animator;
     private List<GameObject> _activeEffects = new List<GameObject>();
+
+    /// <summary>攻撃 / Net モーション再生中で次のアクションを受け付けないか。</summary>
+    private bool _actionLocked;
+
+    /// <summary>ロック後にアクションステートへ実際に入ったか（遷移ラグ対策）。</summary>
+    private bool _enteredAction;
+
+    /// <summary>アクション開始時刻。フェイルセーフのタイムアウト判定に使う。</summary>
+    private float _actionStartTime;
 
     public void SetInputEnabled(bool enabled)
     {
@@ -54,15 +74,28 @@ public class Player : MonoBehaviour, IFreezable
 
     void Update()
     {
+        UpdateActionLock();
+
         Vector3 input = InputManager.Instance?.MoveInput ?? Vector3.zero;
         bool isMoving = input.sqrMagnitude > 0.01f;
         _animator?.SetBool("IsMoving", isMoving);
 
-        if ((InputManager.Instance?.AttackPressedThisFrame ?? false) && effectPrefab != null)
+        bool attack = InputManager.Instance?.AttackPressedThisFrame ?? false;
+        bool net = InputManager.Instance?.NetPressedThisFrame ?? false;
+
+        // 攻撃 / Net モーション中は新たなアクションを受け付けない
+        if (!_actionLocked && attack && effectPrefab != null)
         {
+            BeginAction();
             SpawnEffect();
             TryHitEnemy();
             _animator?.SetTrigger("AttackTrigger");
+        }
+        else if (!_actionLocked && net)
+        {
+            BeginAction();
+            _animator?.SetTrigger("Net");
+            SpawnWebImpact();
         }
 
         if (isMoving)
@@ -73,6 +106,63 @@ public class Player : MonoBehaviour, IFreezable
             forward.Normalize(); right.Normalize();
             Vector3 move = (forward * input.z + right * input.x).normalized;
             transform.Translate(move * speed * Time.deltaTime, Space.World);
+        }
+    }
+
+    /// <summary>
+    /// プレイヤー前方に蜘蛛の巣エフェクトを生成し、停止時間を渡す。
+    /// Net アクション発火時に呼ばれる（検証用に public）。
+    /// </summary>
+    public void SpawnWebImpact()
+    {
+        if (webImpactPrefab == null) return;
+
+        Vector3 fwd = orientation != null ? orientation.forward : transform.forward;
+        fwd.y = 0f;
+        if (fwd.sqrMagnitude < 0.0001f) fwd = transform.forward;
+        fwd.Normalize();
+
+        Vector3 pos = transform.position + fwd * webSpawnDistance;
+        var go = Instantiate(webImpactPrefab, pos, Quaternion.LookRotation(fwd));
+
+        var web = go.GetComponent<WebStunEffect>();
+        if (web != null) web.Initialize(stats != null ? stats.WebStunDuration : 0f);
+    }
+
+    /// <summary>アクション（攻撃 / Net）を開始し、モーション完了までロックする。</summary>
+    private void BeginAction()
+    {
+        _actionLocked = true;
+        _enteredAction = false;
+        _actionStartTime = Time.time;
+    }
+
+    /// <summary>
+    /// アクションロックの解除を判定する。
+    /// Attack / Net ステートに入った後、別ステートへ遷移完了したら解除する。
+    /// maxActionDuration を超えた場合はフェイルセーフで強制解除する。
+    /// </summary>
+    private void UpdateActionLock()
+    {
+        if (!_actionLocked) return;
+
+        if (_animator == null || Time.time - _actionStartTime > maxActionDuration)
+        {
+            _actionLocked = false;
+            _enteredAction = false;
+            return;
+        }
+
+        var st = _animator.GetCurrentAnimatorStateInfo(0);
+        bool inAction = st.IsName("Attack") || st.IsName("Net");
+        if (inAction)
+        {
+            _enteredAction = true;
+        }
+        else if (_enteredAction && !_animator.IsInTransition(0))
+        {
+            _actionLocked = false;
+            _enteredAction = false;
         }
     }
 

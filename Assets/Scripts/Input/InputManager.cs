@@ -8,12 +8,13 @@ public class InputManager : MonoBehaviour
 {
     public static InputManager Instance { get; private set; }
 
-    public bool IsEnabled { get; set; } = true;
+    public bool IsEnabled { get; set; } = false;
     public ReactiveProperty<bool> IsEscapePressed { get; private set; } = new ReactiveProperty<bool>(false);
 
     public Vector3 MoveInput { get; private set; }
     public Vector2 LookDelta { get; private set; }
     public bool AttackPressedThisFrame { get; private set; }
+    public bool NetPressedThisFrame { get; private set; }
     public Vector2 MouseScreenPosition { get; private set; }
 
     private void Awake()
@@ -33,12 +34,14 @@ public class InputManager : MonoBehaviour
             MoveInput = Vector3.zero;
             LookDelta = Vector2.zero;
             AttackPressedThisFrame = false;
+            NetPressedThisFrame = false;
             return;
         }
 
         MoveInput = ReadMove();
         LookDelta = ReadLook();
         AttackPressedThisFrame = ReadAttack();
+        NetPressedThisFrame = ReadNet();
     }
 
     private void OnEscapePressed()
@@ -99,6 +102,17 @@ public class InputManager : MonoBehaviour
         return mouseClick || gamepadSouth;
 #else
         return Input.GetMouseButtonDown(0);
+#endif
+    }
+
+    private bool ReadNet()
+    {
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+        bool mouseClick = Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame;
+        bool gamepadWest = Gamepad.current != null && Gamepad.current.buttonWest.wasPressedThisFrame;
+        return mouseClick || gamepadWest;
+#else
+        return Input.GetMouseButtonDown(1);
 #endif
     }
 

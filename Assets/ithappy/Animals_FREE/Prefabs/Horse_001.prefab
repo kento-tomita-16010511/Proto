@@ -810,7 +810,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyPresenter
   enemyState: {fileID: 11400000, guid: c194602cd983bee4780e48032833a170, type: 2}
-  view: {fileID: 6573582005355188743, guid: 6b0b0b098177a3b439c80991ec9deacc, type: 3}
+  view: {fileID: -3239516758373710247}
   eyeTransforms:
   - {fileID: 8115338649027117324}
   - {fileID: 539449447361096040}

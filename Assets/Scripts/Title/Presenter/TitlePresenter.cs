@@ -22,8 +22,8 @@ public class TitlePresenter : MonoBehaviour
     /// <summary>ゲーム設定 Model（ScriptableObject）。</summary>
     [SerializeField] private GameConfig config;
 
-    /// <summary>設定画面の Presenter。</summary>
-    [SerializeField] private SettingsPresenter settingsPresenter;
+    /// <summary>設定ポップアップの prefab。タイトルでは PopupManager 経由で都度生成する。</summary>
+    [SerializeField] private SettingsPopup settingsPopupPrefab;
 
     private void Awake()
     {
@@ -63,7 +63,11 @@ public class TitlePresenter : MonoBehaviour
             .AddTo(this);
 
         view.OnSettingsButtonClicked
-            .Subscribe(_ => settingsPresenter?.OpenAsync(ct).Forget())
+            .Subscribe(_ =>
+            {
+                if (settingsPopupPrefab != null)
+                    PopupManager.Instance?.ShowAsync(settingsPopupPrefab, ct).Forget();
+            })
             .AddTo(this);
 
         PlayIntroAsync(ct).Forget();

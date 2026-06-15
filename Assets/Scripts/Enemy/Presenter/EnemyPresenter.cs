@@ -34,6 +34,12 @@ public class EnemyPresenter : MonoBehaviour
     /// <summary>現在逃走中かどうか。ヒステリシス判定に使う。</summary>
     private bool _isFleeing;
 
+    /// <summary>スタン（行動停止）中かどうか。</summary>
+    private bool _isStunned;
+
+    /// <summary>スタンが解除される時刻（Time.time 基準）。</summary>
+    private float _stunEndTime;
+
     /// <summary>EnemyState を per-instance にクローンし、View を取得する。</summary>
     private void Awake()
     {
@@ -70,6 +76,17 @@ public class EnemyPresenter : MonoBehaviour
     private void UpdateDetection()
     {
         if (_player == null) return;
+
+        // スタン中は逃走判定を行わず行動を停止する。時間経過で Idle に復帰する。
+        if (_isStunned)
+        {
+            if (Time.time >= _stunEndTime)
+            {
+                _isStunned = false;
+                _state.SetBehavior(EnemyBehavior.Idle);
+            }
+            else return;
+        }
 
         // 判定① FOV 感知（各目からレイキャストで実際に見えているか確認）
         bool inFov = CheckFovDetection();
@@ -131,6 +148,20 @@ public class EnemyPresenter : MonoBehaviour
             }
         }
         return false;
+    }
+
+    /// <summary>
+    /// 指定時間だけ行動を停止する（Net による足止め）。
+    /// 逃走状態を解除し移動を止め、Stunned 状態へ移行する。
+    /// </summary>
+    /// <param name="duration">停止時間（秒）。</param>
+    public void Stun(float duration)
+    {
+        _isStunned = true;
+        _stunEndTime = Time.time + duration;
+        _isFleeing = false;
+        _state.SetBehavior(EnemyBehavior.Stunned);
+        view.StopMoving();
     }
 
     /// <summary>逃走を開始する。</summary>

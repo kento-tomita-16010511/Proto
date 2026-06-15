@@ -35,6 +35,8 @@ public class CameraController : MonoBehaviour
 
     void Update()
     {
+        if (!(InputManager.Instance?.IsEnabled ?? false)) return;
+
         Vector2 delta = GetMouseDelta();
         if (delta == Vector2.zero) return;
 
