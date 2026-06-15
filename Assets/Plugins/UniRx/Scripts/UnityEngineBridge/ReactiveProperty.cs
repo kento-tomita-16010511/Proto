@@ -245,6 +245,11 @@ namespace UniRx
         {
             return false;
         }
+
+        public object Subscribe(Action<object> value)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     /// <summary>

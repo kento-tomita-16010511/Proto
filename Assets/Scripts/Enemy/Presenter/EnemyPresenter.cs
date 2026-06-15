@@ -1,19 +1,29 @@
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.Serialization;
 using UniRx;
 
 /// <summary>
 /// エネミーの視野角・距離判定と逃走ロジックを担う Presenter クラス。
 /// 毎フレーム Observable.EveryUpdate() で判定し、EnemyState へ状態を書き込む。
 /// EnemyState の変化を Subscribe して EnemyView に移動指示を出す。
+/// 判定①：左右の eyeTransforms を起点としたレイキャスト付き FOV 感知
+/// 判定②：ボディ中心からの近接全方位球体（近接感知）
 /// </summary>
 public class EnemyPresenter : MonoBehaviour
 {
-    /// <summary>検知パラメータのテンプレート（per-instance にクローンされる）。</summary>
-    [SerializeField] private EnemyState enemyStateTemplate;
+    /// <summary>検知パラメータ（敵ごとに専用の EnemyState.asset をアサインする）。</summary>
+    [SerializeField, FormerlySerializedAs("enemyStateTemplate")]
+    private EnemyState enemyState;
 
     /// <summary>移動指示を受け取る View。省略時は自動取得する。</summary>
     [SerializeField] private EnemyView view;
+
+    /// <summary>視線の基準点（左目・右目の Transform を登録する）。</summary>
+    [SerializeField] private Transform[] eyeTransforms;
+
+    /// <summary>視線レイキャストで使うレイヤーマスク。デフォルトはすべてのレイヤー。</summary>
+    [SerializeField] private LayerMask detectionMask = -1;
 
     private EnemyState _state;
     private Transform _player;
@@ -27,7 +37,7 @@ public class EnemyPresenter : MonoBehaviour
     /// <summary>EnemyState を per-instance にクローンし、View を取得する。</summary>
     private void Awake()
     {
-        _state = ScriptableObject.Instantiate(enemyStateTemplate);
+        _state = ScriptableObject.Instantiate(enemyState);
         if (view == null) view = GetComponent<EnemyView>();
     }
 
@@ -44,55 +54,83 @@ public class EnemyPresenter : MonoBehaviour
         Debug.Log($"[EnemyPresenter:{name}] Player 発見。FleeSpeed={_state.FleeSpeed} Accel={_state.FleeAcceleration}");
         view.SetMovementParams(_state.FleeSpeed, _state.FleeAcceleration);
 
-        // Idle 遷移時に移動を停止する
         _state.CurrentBehavior
             .Where(b => b == EnemyBehavior.Idle)
             .Subscribe(_ => view.StopMoving())
             .AddTo(this);
 
-        // 毎フレーム視野角・距離を判定する
         Observable.EveryUpdate()
             .Subscribe(_ => UpdateDetection())
             .AddTo(this);
     }
 
-    /// <summary>視野角・距離・ヒステリシスに基づいて逃走状態を更新する。</summary>
+    /// <summary>視野角・近接・ヒステリシスに基づいて逃走状態を更新する。</summary>
     private float _debugLogTimer;
 
     private void UpdateDetection()
     {
         if (_player == null) return;
 
-        float distance = Vector3.Distance(transform.position, _player.position);
-        Vector3 dirToPlayer = (_player.position - transform.position).normalized;
-        float angle = Vector3.Angle(transform.forward, dirToPlayer);
+        // 判定① FOV 感知（各目からレイキャストで実際に見えているか確認）
+        bool inFov = CheckFovDetection();
 
-        bool isBehind = angle > _state.BackAngleThreshold;
-        bool inFov = !isBehind && angle < _state.FieldOfViewAngle * 0.5f;
+        // 判定② 近接感知（ボディ中心から全方位）
+        float bodyDist = Vector3.Distance(transform.position, _player.position);
+        bool inProximity = bodyDist < _state.ProximityRange;
 
-        float startDist = _state.DetectionRange;
         float stopDist = _state.DetectionRange * _state.FleeStopMultiplier;
 
-        // 1秒ごとに最もプレイヤーに近い1体だけ診断ログを出す
         _debugLogTimer -= Time.deltaTime;
         if (_debugLogTimer <= 0f)
         {
             _debugLogTimer = 1f;
-            Debug.Log($"[EnemyPresenter:{name}] dist={distance:F1} angle={angle:F0}° inFov={inFov} isFleeing={_isFleeing} (range={startDist} fov={_state.FieldOfViewAngle * 0.5f:F0}°)");
+            Debug.Log($"[EnemyPresenter:{name}] inFov={inFov} bodyDist={bodyDist:F1} inProximity={inProximity} isFleeing={_isFleeing}");
         }
 
         if (!_isFleeing)
         {
-            // 逃走開始：視野角内かつ検知距離内のときのみ
-            if (inFov && distance < startDist) BeginFlee();
+            if (inFov || inProximity) BeginFlee();
         }
         else
         {
-            // 逃走停止：距離だけで判断する（背後判定は含めない）
-            // 理由：逃げ方向へ向き直る過程でプレイヤーが「背後」に入り EndFlee が即呼ばれるのを防ぐ
-            if (distance > stopDist) EndFlee();
+            // 逃走停止：ボディ距離で判断する（向き直り中に背後判定が入るのを防ぐため）
+            if (bodyDist > stopDist) EndFlee();
             else UpdateFleeDestination();
         }
+    }
+
+    /// <summary>
+    /// 全 eyeTransforms からレイキャスト付き FOV 判定を行い、
+    /// いずれかの目からプレイヤーが見えた場合 true を返す。
+    /// 障害物がなければ可視、最初のヒットが Player タグなら可視と判定する。
+    /// </summary>
+    private bool CheckFovDetection()
+    {
+        if (eyeTransforms == null || eyeTransforms.Length == 0) return false;
+
+        float halfFov = _state.FieldOfViewAngle * 0.5f;
+        float range = _state.DetectionRange;
+
+        foreach (var eye in eyeTransforms)
+        {
+            if (eye == null) continue;
+
+            Vector3 toPlayer = _player.position - eye.position;
+            float dist = toPlayer.magnitude;
+            if (dist >= range) continue;
+
+            float angle = Vector3.Angle(eye.forward, toPlayer / dist);
+            if (angle >= halfFov) continue;
+
+            // 障害物チェック：何も当たらない or 最初のヒットがプレイヤーなら可視
+            if (!Physics.Raycast(eye.position, toPlayer / dist, out RaycastHit hit, dist,
+                    detectionMask, QueryTriggerInteraction.Collide)
+                || hit.transform.CompareTag("Player"))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     /// <summary>逃走を開始する。</summary>
@@ -144,26 +182,34 @@ public class EnemyPresenter : MonoBehaviour
     }
 
 #if UNITY_EDITOR
-    /// <summary>シーンビューに視野角コーン・検知距離・背後判定ラインを表示する。</summary>
+    /// <summary>
+    /// シーンビューに判定範囲を表示する。
+    /// 緑コーン＝FOV感知（各目起点）、シアン球＝近接感知（ボディ中心）、黄球＝目の位置。
+    /// </summary>
     private void OnDrawGizmosSelected()
     {
-        if (enemyStateTemplate == null) return;
+        if (enemyState == null) return;
 
-        Vector3 pos = transform.position;
+        // 判定① FOV コーン（緑）― 各目起点
+        if (eyeTransforms != null)
+        {
+            foreach (var eye in eyeTransforms)
+            {
+                if (eye == null) continue;
 
-        // 検知距離 (黄色)
-        Gizmos.color = new Color(1f, 0.9f, 0f, 0.12f);
-        Gizmos.DrawSphere(pos, enemyStateTemplate.DetectionRange);
-        Gizmos.color = new Color(1f, 0.9f, 0f, 0.9f);
-        Gizmos.DrawWireSphere(pos, enemyStateTemplate.DetectionRange);
+                Gizmos.color = new Color(1f, 0.9f, 0f, 1f);
+                Gizmos.DrawSphere(eye.position, 0.08f);
 
-        // 視野角コーン (緑)
-        DrawFovCone(pos, transform.forward, enemyStateTemplate.FieldOfViewAngle,
-                    enemyStateTemplate.DetectionRange, new Color(0f, 1f, 0f, 0.6f));
+                DrawFovCone(eye.position, eye.forward, enemyState.FieldOfViewAngle,
+                            enemyState.DetectionRange, new Color(0f, 1f, 0.2f, 0.55f));
+            }
+        }
 
-        // 背後判定コーン (赤 / 半径を短く)
-        DrawFovCone(pos, transform.forward, enemyStateTemplate.BackAngleThreshold,
-                    enemyStateTemplate.DetectionRange * 0.5f, new Color(1f, 0.2f, 0.2f, 0.45f));
+        // 判定② 近接感知球（シアン）― ボディ中心
+        Gizmos.color = new Color(0f, 0.85f, 1f, 0.12f);
+        Gizmos.DrawSphere(transform.position, enemyState.ProximityRange);
+        Gizmos.color = new Color(0f, 0.85f, 1f, 0.9f);
+        Gizmos.DrawWireSphere(transform.position, enemyState.ProximityRange);
     }
 
     /// <summary>指定角度の扇形コーンを Gizmos で描画する。</summary>

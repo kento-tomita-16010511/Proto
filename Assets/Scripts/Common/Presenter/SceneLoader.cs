@@ -37,9 +37,9 @@ public class SceneLoader : MonoBehaviour
 
         try
         {
-            var   toSceneName   = config.MainSceneName;
-            var   fromSceneName = fromView != null ? fromView.gameObject.scene.name : null;
-            float halfDuration  = config.FadeOutDuration * 0.5f;
+            var toSceneName = config.MainSceneName;
+            var fromSceneName = fromView != null ? fromView.gameObject.scene.name : null;
+            float halfDuration = config.FadeOutDuration * 0.5f;
 
             // TitleScene をフェードアウト
             if (fromView != null) await fromView.FadeAllOutAsync(halfDuration, ct);
@@ -47,8 +47,8 @@ public class SceneLoader : MonoBehaviour
             await UniTask.NextFrame(ct);
 
             // MainScene の UI をフェードインしてカウントダウンを開始
-            var activator = FindInScene<MainSceneActivator>(toSceneName);
-            var toView    = FindInScene<MainSceneView>(toSceneName);
+            var activator = FindInScene<MainSceneActivatorPresenter>(toSceneName);
+            var toView = FindInScene<MainSceneView>(toSceneName);
 
             if (toView != null) await toView.FadeGameUIInAsync(halfDuration, ct);
             activator?.OnSceneTransitionComplete();
@@ -133,8 +133,8 @@ public class SceneLoader : MonoBehaviour
             {
                 // リスタート: カウントダウンから再開
                 await UniTask.NextFrame(ct);
-                var activator = FindInScene<MainSceneActivator>(toSceneName);
-                var toView    = FindInScene<MainSceneView>(toSceneName);
+                var activator = FindInScene<MainSceneActivatorPresenter>(toSceneName);
+                var toView = FindInScene<MainSceneView>(toSceneName);
                 if (toView != null) await toView.FadeGameUIInAsync(fadeDuration * 0.5f, ct);
                 activator?.OnSceneTransitionComplete();
             }

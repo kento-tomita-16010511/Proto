@@ -1,4 +1,5 @@
 ﻿using Cysharp.Threading.Tasks;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -6,13 +7,10 @@ using UnityEngine;
 /// TitleScene 表示中は FreezeAll で全ロジックを停止し、
 /// 遷移完了後にカウントダウン演出を経て入力を有効化する。
 /// </summary>
-public class MainSceneActivator : MonoBehaviour
+public class MainSceneActivatorPresenter : MonoBehaviour
 {
     /// <summary>停止対象となるゲームオブジェクトのルート群。</summary>
     [SerializeField] private GameObject[] logicRoots;
-
-    /// <summary>停止状態を保持する ScriptableObject。</summary>
-    [SerializeField] private FreezeState freezeState;
 
     /// <summary>入力の有効 / 無効を切り替える View。</summary>
     [SerializeField] private InputGuardView inputGuard;
@@ -24,11 +22,26 @@ public class MainSceneActivator : MonoBehaviour
     [SerializeField] private CountdownPresenter countdownPresenter;
 
     private bool _isFrozen;
+    private readonly List<IFreezable> _freezables = new List<IFreezable>();
 
     /// <summary>起動時にカメラのみ表示し、ロジックを停止する。</summary>
     private void Awake()
     {
         mainSceneView?.ShowCameraOnly();
+
+        // logicRoots 配下から IFreezable を実装したコンポーネントを収集する
+        if (logicRoots != null)
+        {
+            foreach (var root in logicRoots)
+            {
+                if (root == null) continue;
+
+                // 子要素を含めて IFreezable を検索しリストに追加
+                var found = root.GetComponentsInChildren<IFreezable>(true);
+                _freezables.AddRange(found);
+            }
+        }
+
         FreezeAll();
     }
 
@@ -41,30 +54,11 @@ public class MainSceneActivator : MonoBehaviour
         if (_isFrozen) return;
         _isFrozen = true;
 
-        freezeState.Clear();
-
-        if (logicRoots != null)
+        // 各コンポーネント独自の停止処理を実行
+        foreach (var freezable in _freezables)
         {
-            foreach (var root in logicRoots)
-            {
-                if (root == null) continue;
-
-                foreach (var b in root.GetComponentsInChildren<Behaviour>(true))
-                {
-                    if (b is Camera || b is MainSceneActivator) continue;
-                    freezeState.Behaviours.Add(
-                        new FreezeState.Entry { component = b, wasEnabled = b.enabled });
-                    b.enabled = false;
-                }
-
-                foreach (var rb in root.GetComponentsInChildren<Rigidbody>(true))
-                {
-                    freezeState.Rigidbodies.Add(
-                        new FreezeState.RbEntry { rb = rb, wasKinematic = rb.isKinematic });
-                    rb.isKinematic = true;
-                    rb.Sleep();
-                }
-            }
+            if (freezable == null) continue;
+            freezable.Freeze();
         }
 
         inputGuard?.DisableInput();
@@ -89,17 +83,12 @@ public class MainSceneActivator : MonoBehaviour
         if (!_isFrozen) return;
         _isFrozen = false;
 
-        foreach (var e in freezeState.Behaviours)
-            if (e.component != null) e.component.enabled = e.wasEnabled;
-
-        foreach (var e in freezeState.Rigidbodies)
+        // 各コンポーネント独自の再開処理を実行
+        foreach (var freezable in _freezables)
         {
-            if (e.rb == null) continue;
-            e.rb.isKinematic = e.wasKinematic;
-            e.rb.WakeUp();
+            if (freezable == null) continue;
+            freezable.Unfreeze();
         }
-
-        freezeState.Clear();
     }
 
     /// <summary>

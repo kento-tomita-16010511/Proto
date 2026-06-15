@@ -127,6 +127,37 @@ Transform:
   - {fileID: 5859889730738142009}
   m_Father: {fileID: 4687819665600963775}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &687956324710090534
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3024218382040019560}
+  m_Layer: 0
+  m_Name: rightEye
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3024218382040019560
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 687956324710090534}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: 0.42261827, z: -0, w: 0.9063079}
+  m_LocalPosition: {x: -0.21, y: 0.364, z: 0.176}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8881504610387854135}
+  m_LocalEulerAnglesHint: {x: 0, y: 50, z: 0}
 --- !u!1 &1075071017942833317
 GameObject:
   m_ObjectHideFlags: 0
@@ -191,6 +222,37 @@ Transform:
   - {fileID: 4687819665600963775}
   m_Father: {fileID: 4488644046963799106}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1816008156042332412
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3637204023422231836}
+  m_Layer: 0
+  m_Name: LeftEye
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3637204023422231836
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1816008156042332412}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0.42261827, z: -0, w: 0.9063079}
+  m_LocalPosition: {x: -0.21000004, y: 0.364, z: 0.17599998}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8881504610387854135}
+  m_LocalEulerAnglesHint: {x: 0, y: -50, z: 0}
 --- !u!1 &2012003177724862246
 GameObject:
   m_ObjectHideFlags: 0
@@ -1177,13 +1239,15 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8073443194988779917}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2382459246418940066}
   - {fileID: 5260241464314499896}
+  - {fileID: 3024218382040019560}
+  - {fileID: 3637204023422231836}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!143 &8881504610387854123
@@ -1246,7 +1310,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_WalkSpeed: 1
-  m_RunSpeed: 4
+  m_RunSpeed: 3
   m_RotateSpeed: 245
   m_Space: 1
   m_JumpHeight: 5
@@ -1270,7 +1334,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AnimalEnemy
   maxHP: 100
-  scoreValue: 10
+  scoreValue: 100
 --- !u!114 &-5804968962174809236
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1283,8 +1347,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 35d715b26fc1b9a42825acca26cb5894, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyPresenter
-  enemyStateTemplate: {fileID: 11400000, guid: c194602cd983bee4780e48032833a170, type: 2}
+  enemyState: {fileID: 11400000, guid: c194602cd983bee4780e48032833a170, type: 2}
   view: {fileID: 6573582005355188743}
+  eyeTransforms:
+  - {fileID: 3024218382040019560}
+  - {fileID: 3637204023422231836}
+  detectionMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
 --- !u!114 &6573582005355188743
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1297,7 +1367,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b0bb5632d029fe4a8ecefbe63cb35cb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyView
-  agent: {fileID: 0}
+  creatureMover: {fileID: 8881504610387854121}
 --- !u!1 &8122850409471221505
 GameObject:
   m_ObjectHideFlags: 0

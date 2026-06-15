@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using DG.Tweening;
@@ -39,7 +39,7 @@ public class CountdownView : MonoBehaviour
     /// <summary>コンポーネント初期化時にテキストを非表示にする。</summary>
     private void Awake()
     {
-        if (canvasGroup != null) canvasGroup.alpha = 0f;
+        if (canvasGroup != null) canvasGroup.alpha = 1f;
         if (countdownText != null) countdownText.text = "";
     }
 
@@ -79,7 +79,7 @@ public class CountdownView : MonoBehaviour
     private void SetupText(string text)
     {
         if (countdownText != null) countdownText.text = text;
-        if (canvasGroup != null)   canvasGroup.alpha  = 1f;
+        if (canvasGroup != null) canvasGroup.alpha = 1f;
         countdownText.transform.localScale = Vector3.one * 1.5f;
     }
 
@@ -108,7 +108,7 @@ public class CountdownView : MonoBehaviour
     {
         var tcs = new UniTaskCompletionSource();
         tween.OnComplete(() => tcs.TrySetResult())
-             .OnKill(()     => tcs.TrySetResult());
+             .OnKill(() => tcs.TrySetResult());
         ct.Register(() =>
         {
             tween.Kill();

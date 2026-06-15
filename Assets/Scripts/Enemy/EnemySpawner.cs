@@ -6,7 +6,7 @@ using Cysharp.Threading.Tasks;
 using System.Threading;
 using System.Linq;
 
-public class EnemySpawner : MonoBehaviour
+public class EnemySpawner : MonoBehaviour, IFreezable
 {
     [Header("Spawn Settings")]
     [Tooltip("出現させる敵のリスト")]
@@ -38,15 +38,16 @@ public class EnemySpawner : MonoBehaviour
     private List<GameObject> _activeEnemies = new List<GameObject>();
     private CancellationTokenSource _cancellationTokenSource;
     private IEnemySelector _selector;
+    private bool _isFrozen;
 
-void Awake()
+    void Awake()
     {
         _selector = new WeightedEnemySelector();
         if (spawnPoint == null) spawnPoint = transform;
         _cancellationTokenSource = new CancellationTokenSource();
     }
 
-/// <summary>
+    /// <summary>
     /// FreezeAll() で無効化された後に Start() が呼ばれるため、
     /// UnfreezeAll までスポーンが始まらない。
     /// </summary>
@@ -73,6 +74,12 @@ void Awake()
         {
             while (!cancellationToken.IsCancellationRequested)
             {
+                if (_isFrozen)
+                {
+                    // 停止中は短いスパンで待機してループを維持する
+                    await UniTask.Delay(100, cancellationToken: cancellationToken);
+                    continue;
+                }
                 _activeEnemies.RemoveAll(enemy => enemy == null);
                 if (_activeEnemies.Count < maxEnemies) SpawnEnemy();
                 int delayMs = Mathf.RoundToInt(Mathf.Max(0, spawnInterval) * 1000);
@@ -148,4 +155,15 @@ void Awake()
         result = Vector3.zero;
         return false;
     }
+
+    public void Freeze()
+    {
+        _isFrozen = true;
+    }
+
+    public void Unfreeze()
+    {
+        _isFrozen = false;
+    }
+
 }

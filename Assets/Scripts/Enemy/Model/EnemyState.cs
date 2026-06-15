@@ -35,6 +35,9 @@ public class EnemyState : ScriptableObject
     /// <summary>逃走停止距離の倍率。detectionRange にこの値を掛けた距離まで離れたら停止する。</summary>
     [SerializeField] private float fleeStopMultiplier = 1.2f;
 
+    /// <summary>近接全方位センサーの半径（m）。この距離内はどの角度からでも検知する。</summary>
+    [SerializeField] private float proximityRange = 3f;
+
     /// <summary>逃走先を NavMesh 上に補正する際の許容距離（m）。</summary>
     [SerializeField] private float navMeshSampleDistance = 5f;
 
@@ -64,6 +67,9 @@ public class EnemyState : ScriptableObject
 
     /// <summary>逃走停止距離の倍率。</summary>
     public float FleeStopMultiplier => fleeStopMultiplier;
+
+    /// <summary>近接全方位センサーの半径（m）。</summary>
+    public float ProximityRange => proximityRange;
 
     /// <summary>NavMesh サンプリング許容距離（m）。</summary>
     public float NavMeshSampleDistance => navMeshSampleDistance;

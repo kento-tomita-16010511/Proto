@@ -2,7 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 
-public class Player : MonoBehaviour
+public class Player : MonoBehaviour, IFreezable
 {
     [Tooltip("移動速度（m/s）")]
     public float speed = 5f;
@@ -22,19 +22,16 @@ public class Player : MonoBehaviour
     [Tooltip("1回の攻撃ダメージ")]
     public int attackDamage = 100;
 
-    private Rigidbody _rb;
     private Animator _animator;
     private List<GameObject> _activeEffects = new List<GameObject>();
 
     public void SetInputEnabled(bool enabled)
     {
         if (InputManager.Instance != null)
-            InputManager.Instance.IsEnabled = enabled;
-        if (!enabled && _animator != null)
-        {
-            _animator.SetBool("IsMoving", false);
-            _animator.SetTrigger("GameOverTrigger");
-        }
+            if (!enabled && _animator != null)
+            {
+                _animator.SetBool("IsMoving", false);
+            }
     }
 
     /// <summary>Intimidation（威嚇）アニメーションを再生する。リザルト演出で呼ぶ。</summary>
@@ -44,10 +41,8 @@ public class Player : MonoBehaviour
             _animator.SetTrigger("IntimidationTrigger");
     }
 
-
-    void Start()
+    void Awake()
     {
-        _rb = GetComponent<Rigidbody>();
         // Player 本体ではなく、Spider モデル側の Animator（コントローラ付き）を取得する
         foreach (var a in GetComponentsInChildren<Animator>(true))
         {
@@ -70,7 +65,7 @@ public class Player : MonoBehaviour
             _animator?.SetTrigger("AttackTrigger");
         }
 
-        if (_rb == null && isMoving)
+        if (isMoving)
         {
             Vector3 forward = orientation.forward;
             Vector3 right = orientation.right;
@@ -132,20 +127,29 @@ public class Player : MonoBehaviour
         if (target != null) Destroy(target);
     }
 
-    void FixedUpdate()
+    public void Freeze()
     {
-        if (_rb == null) return;
-        Vector3 input = InputManager.Instance?.MoveInput ?? Vector3.zero;
-        if (input.sqrMagnitude > 0f)
+        // アニメーションの停止
+        if (_animator != null)
         {
-            Vector3 forward = orientation.forward;
-            Vector3 right = orientation.right;
-            forward.y = 0f; right.y = 0f;
-            forward.Normalize(); right.Normalize();
-            Vector3 move = (forward * input.z + right * input.x).normalized;
-            Vector3 tgt = _rb.position + move * speed * Time.fixedDeltaTime;
-            _rb.MovePosition(tgt);
+            _animator.speed = 0f;
+            _animator.gameObject.SetActive(false);
         }
+
+        // Update / FixedUpdate を停止
+        this.enabled = false;
     }
 
+    public void Unfreeze()
+    {
+        // アニメーションの再開
+        if (_animator != null)
+        {
+            _animator.speed = 1f;
+            _animator.gameObject.SetActive(true);
+        }
+
+        // Update / FixedUpdate を再開
+        this.enabled = true;
+    }
 }

@@ -9,16 +9,16 @@ using UnityEngine.AI;
 /// </summary>
 public class EnemyView : MonoBehaviour
 {
-    /// <summary>移動を担う NavMeshAgent。未設定時は Awake で自動取得する。</summary>
-    [SerializeField] private NavMeshAgent agent;
-
     /// <summary>CharacterController ベースの移動コンポーネント。NavMeshAgent がない場合に使用する。</summary>
     [SerializeField] private CreatureMover creatureMover;
 
+    /// <summary>移動を担う NavMeshAgent。未設定時は Awake で自動取得する。</summary>
+
+    private NavMeshAgent _agent;
     /// <summary>コンポーネント参照を確立する。</summary>
     private void Awake()
     {
-        if (agent == null) agent = GetComponent<NavMeshAgent>();
+        if (_agent == null) _agent = GetComponent<NavMeshAgent>();
         if (creatureMover == null) creatureMover = GetComponent<CreatureMover>();
     }
 
@@ -27,9 +27,9 @@ public class EnemyView : MonoBehaviour
     /// <param name="acceleration">加速度（m/s²）。</param>
     public void SetMovementParams(float speed, float acceleration)
     {
-        if (agent == null) return;
-        agent.speed        = speed;
-        agent.acceleration = acceleration;
+        if (_agent == null) return;
+        _agent.speed = speed;
+        _agent.acceleration = acceleration;
     }
 
     /// <summary>
@@ -39,10 +39,10 @@ public class EnemyView : MonoBehaviour
     /// <param name="destination">目標位置（ワールド座標）。</param>
     public void SetDestination(Vector3 destination)
     {
-        if (agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh)
+        if (_agent != null && _agent.isActiveAndEnabled && _agent.isOnNavMesh)
         {
-            agent.isStopped = false;
-            agent.SetDestination(destination);
+            _agent.isStopped = false;
+            _agent.SetDestination(destination);
             return;
         }
 
@@ -61,11 +61,11 @@ public class EnemyView : MonoBehaviour
     /// <summary>移動を停止する。</summary>
     public void StopMoving()
     {
-        if (agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh)
+        if (_agent != null && _agent.isActiveAndEnabled && _agent.isOnNavMesh)
         {
-            agent.isStopped = true;
-            agent.ResetPath();
-            agent.velocity = Vector3.zero;
+            _agent.isStopped = true;
+            _agent.ResetPath();
+            _agent.velocity = Vector3.zero;
             return;
         }
 

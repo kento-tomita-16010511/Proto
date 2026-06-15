@@ -143,16 +143,19 @@ public class AnimationClipReassigner : EditorWindow
     private AnimationClip FindAnimationClipByName(string clipName)
     {
         // プロジェクト内の全アニメーションクリップを検索
-        string[] guids = AssetDatabase.FindAssets("t:AnimationClip");
+        string[] guids = AssetDatabase.FindAssets($"{clipName} t:AnimationClip");
 
         foreach (string guid in guids)
         {
             string path = AssetDatabase.GUIDToAssetPath(guid);
-            AnimationClip clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
-
-            if (clip != null && clip.name == clipName)
+            // FBX内のサブアセットも含めて検索するため、LoadAllAssetsAtPath を使用
+            Object[] assets = AssetDatabase.LoadAllAssetsAtPath(path);
+            foreach (var asset in assets)
             {
-                return clip;
+                if (asset is AnimationClip clip && clip.name == clipName)
+                {
+                    return clip;
+                }
             }
         }
 
@@ -163,15 +166,21 @@ public class AnimationClipReassigner : EditorWindow
     {
         List<AnimationClip> clips = new List<AnimationClip>();
         string[] guids = AssetDatabase.FindAssets("t:AnimationClip");
+        HashSet<string> processedPaths = new HashSet<string>();
 
         foreach (string guid in guids)
         {
             string path = AssetDatabase.GUIDToAssetPath(guid);
-            AnimationClip clip = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
+            if (!processedPaths.Add(path)) continue;
 
-            if (clip != null)
+            // FBXなどのファイル内に含まれる全クリップを取得するため、LoadAllAssetsAtPath を使用
+            Object[] assets = AssetDatabase.LoadAllAssetsAtPath(path);
+            foreach (var asset in assets)
             {
-                clips.Add(clip);
+                if (asset is AnimationClip clip)
+                {
+                    clips.Add(clip);
+                }
             }
         }
 

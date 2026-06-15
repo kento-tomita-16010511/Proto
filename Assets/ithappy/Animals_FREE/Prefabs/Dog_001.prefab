@@ -583,7 +583,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyPresenter
   enemyStateTemplate: {fileID: 11400000, guid: c194602cd983bee4780e48032833a170, type: 2}
-  view: {fileID: 6573582005355188743, guid: 6b0b0b098177a3b439c80991ec9deacc, type: 3}
+  view: {fileID: -7737620938010451284}
 --- !u!114 &-7737620938010451284
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -597,6 +597,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyView
   agent: {fileID: 0}
+  creatureMover: {fileID: 0}
 --- !u!1 &2735724662372591797
 GameObject:
   m_ObjectHideFlags: 0

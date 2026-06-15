@@ -1,6 +1,7 @@
 using Cysharp.Threading.Tasks;
 using System.Threading;
 using UnityEngine;
+using UniRx;
 
 /// <summary>
 /// メインゲームのライフサイクルを管理するクラス。
@@ -10,16 +11,21 @@ public class GameManager : MonoBehaviour
 {
     [Header("References")]
     public TimerController timerController;
-    public EnemySpawner    enemySpawner;
-    public Player          player;
+    public EnemySpawner enemySpawner;
+    public Player player;
 
     [Header("Result")]
     [SerializeField] private ResultState resultState;
-    [SerializeField] private GameConfig  config;
+    [SerializeField] private GameConfig config;
 
     [Header("Result Camera")]
     [Tooltip("ゲーム終了時にメインカメラを移動させる位置・向きを示す Transform。")]
     [SerializeField] private Transform resultCameraAnchor;
+
+    /// <summary>設定画面の Presenter。</summary>
+    [SerializeField] private SettingsPresenter settingsPresenter;
+
+    [SerializeField] private MainSceneActivatorPresenter mainSceneActivator;
 
     private Camera _mainCamera;
 
@@ -28,6 +34,23 @@ public class GameManager : MonoBehaviour
         _mainCamera = Camera.main;
         if (timerController != null)
             timerController.OnTimeUp += HandleTimeUp;
+
+        InputManager.Instance.IsEscapePressed.Subscribe(isPressed =>
+        {
+            if (isPressed)
+            {
+                Time.timeScale = 0f;
+                settingsPresenter?.OpenAsync(this.GetCancellationTokenOnDestroy()).Forget();
+                mainSceneActivator?.FreezeAll();
+            }
+            else
+            {
+                // 設定画面が閉じられた時にゲームを再開させる
+                Time.timeScale = 1f;
+                mainSceneActivator?.UnfreezeAll();
+            }
+        })
+        .AddTo(this);
     }
 
     private void OnDestroy()

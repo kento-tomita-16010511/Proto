@@ -1,4 +1,7 @@
 using UnityEngine;
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+using UnityEngine.InputSystem;
+#endif
 
 public class CameraController : MonoBehaviour
 {
@@ -32,7 +35,7 @@ public class CameraController : MonoBehaviour
 
     void Update()
     {
-        Vector2 delta = InputManager.Instance?.LookDelta ?? Vector2.zero;
+        Vector2 delta = GetMouseDelta();
         if (delta == Vector2.zero) return;
 
         // マウスのデルタ値に Time.deltaTime を掛けると、フレームレートが高いほど回転が遅くなってしまうため削除します。
@@ -43,7 +46,7 @@ public class CameraController : MonoBehaviour
         // Y軸反転オプション
         if (invertY) mouseY = -mouseY;
 
-        // プレイヤーのヨー回転（左右）はプレイヤー本体に適用
+        // プレイヤー回転（左右）はプレイヤー本体に適用
         if (playerBody != null)
         {
             playerBody.Rotate(Vector3.up * mouseX, Space.World);
@@ -59,4 +62,23 @@ public class CameraController : MonoBehaviour
         transform.localRotation = Quaternion.Euler(pitch, 0f, 0f);
     }
 
+    Vector2 GetMouseDelta()
+    {
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+        Vector2 delta = Vector2.zero;
+        if (Mouse.current != null)
+        {
+            delta = Mouse.current.delta.ReadValue();
+        }
+        else if (Pointer.current != null)
+        {
+            delta = Pointer.current.delta.ReadValue();
+        }
+        return delta;
+#else
+        float dx = Input.GetAxisRaw("Mouse X");
+        float dy = Input.GetAxisRaw("Mouse Y");
+        return new Vector2(dx, dy);
+#endif
+    }
 }
