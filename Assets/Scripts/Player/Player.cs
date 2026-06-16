@@ -6,25 +6,25 @@ using UniRx;
 public class Player : MonoBehaviour, IFreezable
 {
     [Tooltip("移動速度（m/s）")]
-    public float speed = 5f;
+    [SerializeField] private float speed = 5f;
 
     [Tooltip("移動をプレイヤーの向きに合わせるための参照")]
-    public Transform orientation;
+    [SerializeField] private Transform orientation;
 
     [Header("Effect Settings")]
-    public GameObject effectPrefab;
-    public int maxEffectCount = 5;
-    public float effectLifetime = 2.0f;
-    public RectTransform uiRoot;
+    [SerializeField] private GameObject effectPrefab;
+    [SerializeField] private int maxEffectCount = 5;
+    [SerializeField] private float effectLifetime = 2.0f;
+    [SerializeField] private RectTransform uiRoot;
 
     [Header("Attack Settings")]
     [Tooltip("攻撃が届く最大距離")]
-    public float attackRange = 50f;
+    [SerializeField] private float attackRange = 50f;
     [Tooltip("1回の攻撃ダメージ")]
-    public int attackDamage = 100;
+    [SerializeField] private int attackDamage = 100;
 
     [Tooltip("攻撃 / Net モーション中ロックの最大時間（秒）。アニメ終了検知のフェイルセーフ。")]
-    public float maxActionDuration = 2f;
+    [SerializeField] private float maxActionDuration = 2f;
 
     [Header("Net (Web) Settings")]
     [Tooltip("プレイヤーの調整可能ステータス（Net の停止時間などを保持）")]
@@ -36,9 +36,9 @@ public class Player : MonoBehaviour, IFreezable
 
     [Header("Jump Settings")]
     [Tooltip("ジャンプの最高到達高さ（m）")]
-    public float jumpHeight = 1.5f;
+    [SerializeField] private float jumpHeight = 1.5f;
     [Tooltip("重力加速度（負の値）")]
-    public float gravity = -20f;
+    [SerializeField] private float gravity = -20f;
 
     private CharacterController _controller;
     private float _verticalVelocity;

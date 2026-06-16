@@ -10,9 +10,9 @@ using UniRx;
 public class GameManager : MonoBehaviour
 {
     [Header("References")]
-    public TimerController timerController;
-    public EnemySpawner enemySpawner;
-    public Player player;
+    [SerializeField] private TimerController timerController;
+    [SerializeField] private EnemySpawner enemySpawner;
+    [SerializeField] private Player player;
 
     [Header("Result")]
     [SerializeField] private ResultState resultState;
@@ -36,7 +36,9 @@ public class GameManager : MonoBehaviour
     {
         _mainCamera = Camera.main;
         if (timerController != null)
-            timerController.OnTimeUp += HandleTimeUp;
+            timerController.OnTimeUp
+                .Subscribe(_ => HandleTimeUp())
+                .AddTo(this);
 
         // Skip(1) で ReactiveProperty の購読時初期値発火を無視する。
         // これを怠ると MainScene ロード時（タイトル画面背景）に初期値 false が流れ、
@@ -47,9 +49,10 @@ public class GameManager : MonoBehaviour
             {
                 if (isPressed)
                 {
-                    // ポーズ（timeScale + Freeze）は GameManager が担当し、
+                    // ポーズ（タイマー停止 + Freeze）は GameManager が担当し、
                     // ポップアップの生成・表示は PopupManager に委譲する（機能分離）。
-                    Time.timeScale = 0f;
+                    // Time.timeScale は使用禁止のため、タイマーは Pause() で個別に停止する（CLAUDE.md 規約）。
+                    timerController?.Pause();
                     mainSceneActivator?.FreezeAll();
                     OpenSettingsAsync(this.GetCancellationTokenOnDestroy()).Forget();
                 }
@@ -57,7 +60,7 @@ public class GameManager : MonoBehaviour
                 {
                     // 設定が閉じられた時にゲームを再開させる
                     _activePopup?.RequestClose();
-                    Time.timeScale = 1f;
+                    timerController?.Resume();
                     mainSceneActivator?.UnfreezeAll();
                 }
             })
@@ -79,12 +82,6 @@ public class GameManager : MonoBehaviour
                     InputManager.Instance.IsEscapePressed.Value = false;
             })
             .AddTo(this);
-    }
-
-    private void OnDestroy()
-    {
-        if (timerController != null)
-            timerController.OnTimeUp -= HandleTimeUp;
     }
 
     private void HandleTimeUp()

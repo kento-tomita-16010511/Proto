@@ -38,10 +38,11 @@ public class SoundManager : MonoBehaviour
 
     private void Awake()
     {
+        // 常駐は PersistentScene への配置で実現する（DontDestroyOnLoad は使用禁止 / CLAUDE.md 規約）。
+        // PersistentScene は起動時に一度だけ読み込まれるため、重複生成ガードのみ残す。
         if (Instance == null)
         {
             Instance = this;
-            DontDestroyOnLoad(gameObject);
             InitializeDictionaries();
             LoadVolumes();
         }
