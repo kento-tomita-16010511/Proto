@@ -1,6 +1,7 @@
 using UnityEngine;
 using TMPro;
 using System;
+using UniRx;
 
 /// <summary>ゲーム内タイマーの計測と表示を担うコンポーネント。</summary>
 public class TimerController : MonoBehaviour
@@ -32,6 +33,12 @@ public class TimerController : MonoBehaviour
         _remaining = startSeconds;
         _running   = false;   // StartTimer() が呼ばれるまで計測しない
         UpdateDisplay();
+
+        // 毎フレームのカウントダウンは Update を使わず EveryUpdate で行う（CLAUDE.md 規約）
+        Observable.EveryUpdate()
+            .Where(_ => _running)
+            .Subscribe(_ => TickTimer())
+            .AddTo(this);
     }
 
     /// <summary>
@@ -44,10 +51,9 @@ public class TimerController : MonoBehaviour
         _running   = true;
     }
 
-    private void Update()
+    /// <summary>毎フレームのカウントダウン処理。EveryUpdate から _running 中のみ呼ばれる。</summary>
+    private void TickTimer()
     {
-        if (!_running) return;
-
         _remaining -= Time.deltaTime;
         if (_remaining <= 0f)
         {

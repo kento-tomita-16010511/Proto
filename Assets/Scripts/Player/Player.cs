@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
+using UniRx;
 
 public class Player : MonoBehaviour, IFreezable
 {
@@ -33,6 +34,18 @@ public class Player : MonoBehaviour, IFreezable
     [Tooltip("エフェクトを生成する前方距離（m）")]
     [SerializeField] private float webSpawnDistance = 1.5f;
 
+    [Header("Jump Settings")]
+    [Tooltip("ジャンプの最高到達高さ（m）")]
+    public float jumpHeight = 1.5f;
+    [Tooltip("重力加速度（負の値）")]
+    public float gravity = -20f;
+
+    private CharacterController _controller;
+    private float _verticalVelocity;
+
+    /// <summary>Freeze 中かどうか。EveryUpdate ストリームをスキップさせるフラグ。</summary>
+    private bool _frozen;
+
     private Animator _animator;
     private List<GameObject> _activeEffects = new List<GameObject>();
 
@@ -61,8 +74,10 @@ public class Player : MonoBehaviour, IFreezable
             _animator.SetTrigger("IntimidationTrigger");
     }
 
-    void Awake()
+void Awake()
     {
+        _controller = GetComponent<CharacterController>();
+
         // Player 本体ではなく、Spider モデル側の Animator（コントローラ付き）を取得する
         foreach (var a in GetComponentsInChildren<Animator>(true))
         {
@@ -70,9 +85,17 @@ public class Player : MonoBehaviour, IFreezable
         }
         _animator?.SetTrigger("Idle");
         if (orientation == null) orientation = transform;
+
+        // 毎フレーム処理は Update を使わず EveryUpdate で行う（CLAUDE.md 規約）。
+        // Freeze 中は _frozen で処理をスキップする。
+        Observable.EveryUpdate()
+            .Where(_ => !_frozen)
+            .Subscribe(_ => Tick())
+            .AddTo(this);
     }
 
-    void Update()
+    /// <summary>毎フレームの移動・アクション・ジャンプ処理。EveryUpdate から呼ばれる。</summary>
+    private void Tick()
     {
         UpdateActionLock();
 
@@ -107,6 +130,31 @@ public class Player : MonoBehaviour, IFreezable
             Vector3 move = (forward * input.z + right * input.x).normalized;
             transform.Translate(move * speed * Time.deltaTime, Space.World);
         }
+
+        ApplyJumpAndGravity();
+    }
+
+    /// <summary>
+    /// 接地判定に基づきジャンプ入力を処理し、重力による垂直移動を
+    /// CharacterController に適用する。水平移動は既存の transform.Translate のまま。
+    /// </summary>
+    private void ApplyJumpAndGravity()
+    {
+        if (_controller == null) return;
+
+        bool grounded = _controller.isGrounded;
+        if (grounded && _verticalVelocity < 0f)
+            _verticalVelocity = -2f; // 接地を安定させるための軽い押し付け
+
+        bool jump = InputManager.Instance?.JumpPressedThisFrame ?? false;
+        if (grounded && jump)
+        {
+            // v = sqrt(2 * g * h) で目標高さに到達する初速を求める
+            _verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
+        }
+
+        _verticalVelocity += gravity * Time.deltaTime;
+        _controller.Move(Vector3.up * _verticalVelocity * Time.deltaTime);
     }
 
     /// <summary>
@@ -219,27 +267,29 @@ public class Player : MonoBehaviour, IFreezable
 
     public void Freeze()
     {
+        // 毎フレーム処理を停止（_frozen で EveryUpdate をスキップ）
+        _frozen = true;
+        this.enabled = false;
+
         // アニメーションの停止
         if (_animator != null)
         {
             _animator.speed = 0f;
             _animator.gameObject.SetActive(false);
         }
-
-        // Update / FixedUpdate を停止
-        this.enabled = false;
     }
 
     public void Unfreeze()
     {
+        // 毎フレーム処理を再開
+        _frozen = false;
+        this.enabled = true;
+
         // アニメーションの再開
         if (_animator != null)
         {
             _animator.speed = 1f;
             _animator.gameObject.SetActive(true);
         }
-
-        // Update / FixedUpdate を再開
-        this.enabled = true;
     }
 }

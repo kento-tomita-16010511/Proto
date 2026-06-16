@@ -1,4 +1,5 @@
 using UnityEngine;
+using UniRx;
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
 using UnityEngine.InputSystem;
 #endif
@@ -31,12 +32,17 @@ public class CameraController : MonoBehaviour
         {
             playerBody = transform.parent;
         }
+
+        // 毎フレームのカメラ操作は Update を使わず EveryUpdate で行う（CLAUDE.md 規約）
+        Observable.EveryUpdate()
+            .Where(_ => InputManager.Instance?.IsEnabled ?? false)
+            .Subscribe(_ => Tick())
+            .AddTo(this);
     }
 
-    void Update()
+    /// <summary>毎フレームのカメラ回転処理。EveryUpdate から入力有効時のみ呼ばれる。</summary>
+    void Tick()
     {
-        if (!(InputManager.Instance?.IsEnabled ?? false)) return;
-
         Vector2 delta = GetMouseDelta();
         if (delta == Vector2.zero) return;
 

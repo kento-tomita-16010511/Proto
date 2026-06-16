@@ -242,3 +242,73 @@ await view.FadeLogoInAsync(duration);
 - `DontDestroyOnLoad` は使用禁止。常駐オブジェクトは `PersistentScene` に配置する
 - シーンロードは必ず `LoadSceneAsync` を使用し、同期版 `LoadScene` は使わない
 - `#if UNITY_EDITOR` で囲まない `UnityEditor` 名前空間の参照は禁止
+
+## 更新処理：Update / FixedUpdate は使用禁止
+
+`Update()` および `FixedUpdate()` は原則使用禁止とする。
+フレームごとの状態監視・値の変化検知は UniRx の `ReactiveProperty` および `ObserveEveryValueChanged` で実装すること。
+
+### 理由
+
+- `Update` は毎フレーム全インスタンスで実行されパフォーマンスに影響する
+- UniRx による変化検知は「変化があった時だけ処理が走る」ため無駄がない
+- 処理の流れが宣言的になり、MVPパターンとの整合性が高まる
+
+### 実装例
+
+```csharp
+// ✅ 正しい：ReactiveProperty で値の変化を監視する
+private readonly ReactiveProperty<int> _score = new ReactiveProperty<int>(0);
+
+void Start()
+{
+    // 値が変わった時だけ処理が走る
+    _score
+        .Subscribe(score => view.UpdateScoreText(score))
+        .AddTo(this);
+}
+
+// ✅ 外部から値を変える（Presenterが呼ぶ）
+public void AddScore(int amount) => _score.Value += amount;
+
+// ✅ ObserveEveryValueChanged：外部オブジェクトの変化を監視する場合
+enemy.ObserveEveryValueChanged(e => e.IsDead)
+    .Where(isDead => isDead)
+    .Subscribe(_ => HandleEnemyDead())
+    .AddTo(this);
+
+// ✅ 時間経過など「毎フレーム処理が必要な場合」は Observable.EveryUpdate を使う
+Observable.EveryUpdate()
+    .Where(_ => Input.GetKeyDown(KeyCode.Space))
+    .Subscribe(_ => HandleJump())
+    .AddTo(this);
+
+// ❌ 禁止
+void Update()
+{
+    if (Input.GetKeyDown(KeyCode.Space)) HandleJump();
+}
+
+// ❌ 禁止
+void FixedUpdate()
+{
+    rb.MovePosition(rb.position + direction * speed * Time.fixedDeltaTime);
+}
+```
+
+### 例外（物理演算）
+
+`Rigidbody` を使った物理演算（移動・力の付与）は `Observable.EveryFixedUpdate()` を使うこと。
+
+```csharp
+// ✅ 物理演算が必要な場合
+Observable.EveryFixedUpdate()
+    .Subscribe(_ => rb.MovePosition(rb.position + direction * speed * Time.fixedDeltaTime))
+    .AddTo(this);
+
+// ❌ 禁止
+void FixedUpdate()
+{
+    rb.MovePosition(rb.position + direction * speed * Time.fixedDeltaTime);
+}
+```

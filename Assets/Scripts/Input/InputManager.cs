@@ -15,15 +15,22 @@ public class InputManager : MonoBehaviour
     public Vector2 LookDelta { get; private set; }
     public bool AttackPressedThisFrame { get; private set; }
     public bool NetPressedThisFrame { get; private set; }
+    public bool JumpPressedThisFrame { get; private set; }
     public Vector2 MouseScreenPosition { get; private set; }
 
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+
+        // 毎フレームの入力ポーリングは Update を使わず EveryUpdate で行う（CLAUDE.md 規約）
+        Observable.EveryUpdate()
+            .Subscribe(_ => Tick())
+            .AddTo(this);
     }
 
-    private void Update()
+    /// <summary>毎フレームの入力取得処理。EveryUpdate から呼ばれる。</summary>
+    private void Tick()
     {
         // マウス座標はIsEnabledに関わらず常に更新（Raycast用）
         MouseScreenPosition = ReadMouseScreenPosition();
@@ -35,6 +42,7 @@ public class InputManager : MonoBehaviour
             LookDelta = Vector2.zero;
             AttackPressedThisFrame = false;
             NetPressedThisFrame = false;
+            JumpPressedThisFrame = false;
             return;
         }
 
@@ -42,6 +50,7 @@ public class InputManager : MonoBehaviour
         LookDelta = ReadLook();
         AttackPressedThisFrame = ReadAttack();
         NetPressedThisFrame = ReadNet();
+        JumpPressedThisFrame = ReadJump();
     }
 
     private void OnEscapePressed()
@@ -115,6 +124,18 @@ public class InputManager : MonoBehaviour
         return Input.GetMouseButtonDown(1);
 #endif
     }
+
+private bool ReadJump()
+    {
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+        bool key = Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame;
+        bool gamepadNorth = Gamepad.current != null && Gamepad.current.buttonNorth.wasPressedThisFrame;
+        return key || gamepadNorth;
+#else
+        return Input.GetKeyDown(KeyCode.Space);
+#endif
+    }
+
 
     private Vector2 ReadMouseScreenPosition()
     {

@@ -40,19 +40,17 @@ public class TitlePresenter : MonoBehaviour
         Debug.LogWarning("[TitlePresenter] OnDisable ← something disabled this!");
     }
 
-    private int _updateCount = 0;
-    private void Update()
-    {
-        _updateCount++;
-        if (_updateCount <= 3)
-            Debug.Log("[TitlePresenter] Update #" + _updateCount);
-    }
-
     /// <summary>ボタンイベントの購読を開始し、イントロ演出を再生する。</summary>
     private void Start()
     {
         Debug.Log("[TitlePresenter] Start called");
         var ct = this.GetCancellationTokenOnDestroy();
+
+        // デバッグ用：最初の3フレームをログ出力（Update の代替）
+        Observable.EveryUpdate()
+            .Take(3)
+            .Subscribe(count => Debug.Log("[TitlePresenter] Update #" + (count + 1)))
+            .AddTo(this);
 
         view.OnStartButtonClicked
             .Subscribe(_ => HandleStart(ct))
