@@ -1,0 +1,45 @@
+using UnityEngine;
+using System;
+
+/// <summary>
+/// 敵の基本クラス。HP管理や死亡処理などの共通機能を持ちます。
+/// </summary>
+public abstract class EnemyBase : MonoBehaviour, IEnemy
+{
+    [Header("Base Stats")]
+    [SerializeField, Tooltip("敵の最大体力")]
+    protected int maxHP = 100;
+
+    /// <summary>最大HPを取得します</summary>
+    public int MaxHP => maxHP;
+    /// <summary>現在のHPを取得します</summary>
+    public int CurrentHP { get; protected set; }
+
+    /// <summary>死亡時に通知を受け取りたい場合に利用するイベント（エフェクト再生やスコア加算用）</summary>
+    public event Action OnDeath;
+
+    protected virtual void Awake()
+    {
+        CurrentHP = maxHP;
+    }
+
+    /// <summary>
+    /// ダメージを受ける処理
+    /// </summary>
+    public virtual void TakeDamage(int amount)
+    {
+        if (CurrentHP <= 0) return;
+
+        CurrentHP -= amount;
+        if (CurrentHP <= 0) Die();
+    }
+
+    /// <summary>
+    /// 死亡時の基本処理。必要に応じてオーバーライドしてください。
+    /// </summary>
+    protected virtual void Die()
+    {
+        OnDeath?.Invoke();
+        Destroy(gameObject);
+    }
+}

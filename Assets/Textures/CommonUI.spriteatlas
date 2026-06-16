@@ -1,0 +1,120 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!687078895 &4343727234628468602
+SpriteAtlas:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: CommonUI
+  m_EditorData:
+    serializedVersion: 2
+    textureSettings:
+      serializedVersion: 2
+      anisoLevel: 1
+      compressionQuality: 50
+      maxTextureSize: 2048
+      textureCompression: 0
+      filterMode: 1
+      generateMipMaps: 0
+      readable: 0
+      crunchedCompression: 0
+      sRGB: 1
+    platformSettings: []
+    packingSettings:
+      serializedVersion: 2
+      padding: 4
+      blockOffset: 1
+      allowAlphaSplitting: 0
+      enableRotation: 1
+      enableTightPacking: 1
+      enableAlphaDilation: 0
+    secondaryTextureSettings: {}
+    variantMultiplier: 1
+    packables:
+    - {fileID: -1284834838, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+    - {fileID: 28300316, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+    - {fileID: -34336467, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+    - {fileID: -1719838878, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+    - {fileID: 336821596, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+    - {fileID: -764038952, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+    - {fileID: -1376403700, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+    - {fileID: 1289064494, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+    - {fileID: 1260826793, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+    - {fileID: 145967910, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+    - {fileID: 1509767171, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+    - {fileID: -1941435760, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+    - {fileID: 1909911386, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+    - {fileID: 2130409342, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+    - {fileID: 118964613, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+    - {fileID: -1827442869, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+    - {fileID: -697475383, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+    - {fileID: -2084349418, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+    - {fileID: 804547258, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+    bindAsDefault: 1
+    isAtlasV2: 0
+    cachedData: {fileID: 0}
+    packedSpriteRenderDataKeys:
+    - 6e25a1e9cade28d4e85a0f1e1478bc73: -1941435760
+    - 6e25a1e9cade28d4e85a0f1e1478bc73: 1509767171
+    - 6e25a1e9cade28d4e85a0f1e1478bc73: 2130409342
+    - 6e25a1e9cade28d4e85a0f1e1478bc73: 1909911386
+    - 6e25a1e9cade28d4e85a0f1e1478bc73: -1827442869
+    - 6e25a1e9cade28d4e85a0f1e1478bc73: 118964613
+    - 6e25a1e9cade28d4e85a0f1e1478bc73: -2084349418
+    - 6e25a1e9cade28d4e85a0f1e1478bc73: -697475383
+    - 6e25a1e9cade28d4e85a0f1e1478bc73: 804547258
+    - 6e25a1e9cade28d4e85a0f1e1478bc73: 1260826793
+    - 6e25a1e9cade28d4e85a0f1e1478bc73: 145967910
+    - 6e25a1e9cade28d4e85a0f1e1478bc73: -34336467
+    - 6e25a1e9cade28d4e85a0f1e1478bc73: -1719838878
+    - 6e25a1e9cade28d4e85a0f1e1478bc73: -1284834838
+    - 6e25a1e9cade28d4e85a0f1e1478bc73: 28300316
+    - 6e25a1e9cade28d4e85a0f1e1478bc73: -1376403700
+    - 6e25a1e9cade28d4e85a0f1e1478bc73: 1289064494
+    - 6e25a1e9cade28d4e85a0f1e1478bc73: 336821596
+    - 6e25a1e9cade28d4e85a0f1e1478bc73: -764038952
+  m_MasterAtlas: {fileID: 0}
+  m_PackedSprites:
+  - {fileID: -1941435760, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+  - {fileID: 1509767171, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+  - {fileID: 2130409342, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+  - {fileID: 1909911386, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+  - {fileID: -1827442869, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+  - {fileID: 118964613, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+  - {fileID: -2084349418, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+  - {fileID: -697475383, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+  - {fileID: 804547258, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+  - {fileID: 1260826793, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+  - {fileID: 145967910, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+  - {fileID: -34336467, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+  - {fileID: -1719838878, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+  - {fileID: -1284834838, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+  - {fileID: 28300316, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+  - {fileID: -1376403700, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+  - {fileID: 1289064494, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+  - {fileID: 336821596, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+  - {fileID: -764038952, guid: 6e25a1e9cade28d4e85a0f1e1478bc73, type: 3}
+  m_PackedSpriteNamesToIndex:
+  - proto_CommonUI_11
+  - proto_CommonUI_10
+  - proto_CommonUI_13
+  - proto_CommonUI_12
+  - proto_CommonUI_15
+  - proto_CommonUI_14
+  - proto_CommonUI_17
+  - proto_CommonUI_16
+  - proto_CommonUI_18
+  - proto_CommonUI_8
+  - proto_CommonUI_9
+  - proto_CommonUI_2
+  - proto_CommonUI_3
+  - proto_CommonUI_0
+  - proto_CommonUI_1
+  - proto_CommonUI_6
+  - proto_CommonUI_7
+  - proto_CommonUI_4
+  - proto_CommonUI_5
+  m_RenderDataMap: {}
+  m_Tag: CommonUI
+  m_IsVariant: 0
