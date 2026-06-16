@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System;
+using System.Linq;
 
 /// <summary>
 /// ゲーム全体の音響（BGM・SE）を一括管理するシングルトンクラスです。
@@ -38,10 +39,11 @@ public class SoundManager : MonoBehaviour
 
     private void Awake()
     {
+        // 常駐は PersistentScene への配置で実現する（DontDestroyOnLoad は使用禁止 / CLAUDE.md 規約）。
+        // PersistentScene は起動時に一度だけ読み込まれるため、重複生成ガードのみ残す。
         if (Instance == null)
         {
             Instance = this;
-            DontDestroyOnLoad(gameObject);
             InitializeDictionaries();
             LoadVolumes();
         }
@@ -81,18 +83,15 @@ public class SoundManager : MonoBehaviour
     /// </summary>
     private void InitializeDictionaries()
     {
-        foreach (var data in _bgmList)
-        {
-            if (!string.IsNullOrEmpty(data.key) && data.clip != null)
-                _bgmDictionary[data.key] = data.clip;
-        }
-
-        foreach (var data in _seList)
-        {
-            if (!string.IsNullOrEmpty(data.key) && data.clip != null)
-                _seDictionary[data.key] = data.clip;
-        }
+        _bgmDictionary = BuildClipDictionary(_bgmList);
+        _seDictionary = BuildClipDictionary(_seList);
     }
+
+    /// <summary>有効なエントリのみを辞書化する（キー重複は後勝ち）。</summary>
+    private static Dictionary<string, AudioClip> BuildClipDictionary(List<SoundData> list) =>
+        list.Where(d => !string.IsNullOrEmpty(d.key) && d.clip != null)
+            .GroupBy(d => d.key)
+            .ToDictionary(g => g.Key, g => g.Last().clip);
 
     /// <summary>
     /// 指定されたキーのBGMを再生します。

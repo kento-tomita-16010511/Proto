@@ -7,17 +7,17 @@ using UnityEngine.InputSystem;
 public class CameraController : MonoBehaviour
 {
     [Tooltip("カメラの感度")]
-    public float mouseSensitivity = 10f;
+    [SerializeField] private float mouseSensitivity = 10f;
     [Tooltip("カメラが回転させる対象（プレイヤーの Transform）")]
-    public Transform playerBody;
+    [SerializeField] private Transform playerBody;
     [Tooltip("上下回転の最小角度（度）")]
-    public float minPitch = -80f;
+    [SerializeField] private float minPitch = -80f;
     [Tooltip("上下回転の最大角度（度）")]
-    public float maxPitch = 80f;
+    [SerializeField] private float maxPitch = 80f;
     [Tooltip("マウスY軸を反転する")]
-    public bool invertY = false;
+    [SerializeField] private bool invertY = false;
     [Tooltip("カーソルをロックする")]
-    public bool lockCursor = true;
+    [SerializeField] private bool lockCursor = true;
 
     float pitch = 0f; // 上下回転（カメラ）
 

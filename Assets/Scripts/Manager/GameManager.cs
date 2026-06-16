@@ -10,9 +10,9 @@ using UniRx;
 public class GameManager : MonoBehaviour
 {
     [Header("References")]
-    public TimerController timerController;
-    public EnemySpawner enemySpawner;
-    public Player player;
+    [SerializeField] private TimerController timerController;
+    [SerializeField] private EnemySpawner enemySpawner;
+    [SerializeField] private Player player;
 
     [Header("Result")]
     [SerializeField] private ResultState resultState;
@@ -36,32 +36,37 @@ public class GameManager : MonoBehaviour
     {
         _mainCamera = Camera.main;
         if (timerController != null)
-            timerController.OnTimeUp += HandleTimeUp;
+            timerController.OnTimeUp
+                .Subscribe(_ => HandleTimeUp())
+                .AddTo(this);
 
         // Skip(1) で ReactiveProperty の購読時初期値発火を無視する。
         // これを怠ると MainScene ロード時（タイトル画面背景）に初期値 false が流れ、
         // else ブランチの UnfreezeAll() が走って入力が早期有効化されてしまう。
         InputManager.Instance.IsEscapePressed
             .Skip(1)
-            .Subscribe(isPressed =>
-            {
-                if (isPressed)
-                {
-                    // ポーズ（timeScale + Freeze）は GameManager が担当し、
-                    // ポップアップの生成・表示は PopupManager に委譲する（機能分離）。
-                    Time.timeScale = 0f;
-                    mainSceneActivator?.FreezeAll();
-                    OpenSettingsAsync(this.GetCancellationTokenOnDestroy()).Forget();
-                }
-                else
-                {
-                    // 設定が閉じられた時にゲームを再開させる
-                    _activePopup?.RequestClose();
-                    Time.timeScale = 1f;
-                    mainSceneActivator?.UnfreezeAll();
-                }
-            })
+            .Subscribe(isPressed => { if (isPressed) EnterPause(); else ExitPause(); })
             .AddTo(this);
+    }
+
+    /// <summary>
+    /// ポーズに入る。タイマー停止 + ロジック Freeze を行い、設定ポップアップを表示する。
+    /// ポーズ処理は GameManager が担当し、ポップアップの生成・表示は PopupManager に委譲する（機能分離）。
+    /// </summary>
+    private void EnterPause()
+    {
+        // Time.timeScale は使用禁止のため、タイマーは Pause() で個別に停止する（CLAUDE.md 規約）。
+        timerController?.Pause();
+        mainSceneActivator?.FreezeAll();
+        OpenSettingsAsync(this.GetCancellationTokenOnDestroy()).Forget();
+    }
+
+    /// <summary>ポーズを解除する。設定ポップアップを閉じ、タイマー / ロジックを再開する。</summary>
+    private void ExitPause()
+    {
+        _activePopup?.RequestClose();
+        timerController?.Resume();
+        mainSceneActivator?.UnfreezeAll();
     }
 
     /// <summary>設定ポップアップを生成・表示し、閉じられたら ESC トグル状態を同期する。</summary>
@@ -79,12 +84,6 @@ public class GameManager : MonoBehaviour
                     InputManager.Instance.IsEscapePressed.Value = false;
             })
             .AddTo(this);
-    }
-
-    private void OnDestroy()
-    {
-        if (timerController != null)
-            timerController.OnTimeUp -= HandleTimeUp;
     }
 
     private void HandleTimeUp()

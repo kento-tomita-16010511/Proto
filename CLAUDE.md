@@ -236,6 +236,115 @@ await view.FadeLogoInAsync(duration);
 
 ---
 
+## コードスタイル：ネストの禁止とメソッド分割
+
+### ネストは最大2階層まで
+
+`if` / `for` / `foreach` などのネストは最大2階層までとする。
+3階層以上になる場合は、早期リターン（ガード節）またはメソッド分割で解消すること。
+
+\`\`\`csharp
+// ❌ 禁止：深いネスト
+void HandleAttack()
+{
+    if (isAlive)
+    {
+        if (hasTarget)
+        {
+            if (isInRange)
+            {
+                DealDamage();
+            }
+        }
+    }
+}
+
+// ✅ 正しい：ガード節で早期リターン
+void HandleAttack()
+{
+    if (!isAlive) return;
+    if (!hasTarget) return;
+    if (!isInRange) return;
+
+    DealDamage();
+}
+\`\`\`
+
+### 機能ごとに必ずメソッド化する
+
+1つのメソッドは「1つの責務」のみを持つこと。
+処理が複数の役割を持つ場合は、役割ごとにメソッドに分割すること。
+目安として、1メソッドは20行以内に収めること。
+
+\`\`\`csharp
+// ❌ 禁止：1メソッドに複数の処理を詰め込む
+void OnEnemyDefeated()
+{
+    // スコア加算
+    _score.Value += 10;
+    scoreText.text = _score.Value.ToString();
+
+    // エフェクト再生
+    Instantiate(defeatEffect, enemy.transform.position, Quaternion.identity);
+    AudioManager.Play(defeatSE);
+
+    // 敵の削除
+    enemy.gameObject.SetActive(false);
+    _enemyList.Remove(enemy);
+}
+
+// ✅ 正しい：役割ごとにメソッドを分割する
+void OnEnemyDefeated(Enemy enemy)
+{
+    AddScore(10);
+    PlayDefeatEffect(enemy.transform.position);
+    RemoveEnemy(enemy);
+}
+
+/// <summary>スコアを加算し、表示を更新する</summary>
+private void AddScore(int amount)
+{
+    _score.Value += amount;
+}
+
+/// <summary>撃破エフェクトとSEを再生する</summary>
+private void PlayDefeatEffect(Vector3 position)
+{
+    Instantiate(defeatEffect, position, Quaternion.identity);
+    AudioManager.Play(defeatSE);
+}
+
+/// <summary>敵をリストから除外し、非アクティブにする</summary>
+private void RemoveEnemy(Enemy enemy)
+{
+    _enemyList.Remove(enemy);
+    enemy.gameObject.SetActive(false);
+}
+\`\`\`
+
+### LINQでコレクション処理をフラットに書く
+
+`foreach` + `if` のネストは LINQ に置き換えてフラットにすること。
+
+\`\`\`csharp
+// ❌ 禁止：foreach + if のネスト
+foreach (var enemy in _enemyList)
+{
+    if (enemy.IsAlive)
+    {
+        enemy.TakeDamage(10);
+    }
+}
+
+// ✅ 正しい：LINQ でフラットに書く
+_enemyList
+    .Where(e => e.IsAlive)
+    .ToList()
+    .ForEach(e => e.TakeDamage(10));
+\`\`\`
+
+---
+
 ## その他の規約
 
 - `Time.timeScale` はグローバルに影響するため原則使用禁止。停止が必要な場合は `Behaviour.enabled`  `Rigidbody.isKinematic` で個別に制御する

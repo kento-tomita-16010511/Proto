@@ -2,29 +2,30 @@ using UnityEngine;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using UniRx;
+using System.Linq;
 
 public class Player : MonoBehaviour, IFreezable
 {
     [Tooltip("移動速度（m/s）")]
-    public float speed = 5f;
+    [SerializeField] private float speed = 5f;
 
     [Tooltip("移動をプレイヤーの向きに合わせるための参照")]
-    public Transform orientation;
+    [SerializeField] private Transform orientation;
 
     [Header("Effect Settings")]
-    public GameObject effectPrefab;
-    public int maxEffectCount = 5;
-    public float effectLifetime = 2.0f;
-    public RectTransform uiRoot;
+    [SerializeField] private GameObject effectPrefab;
+    [SerializeField] private int maxEffectCount = 5;
+    [SerializeField] private float effectLifetime = 2.0f;
+    [SerializeField] private RectTransform uiRoot;
 
     [Header("Attack Settings")]
     [Tooltip("攻撃が届く最大距離")]
-    public float attackRange = 50f;
+    [SerializeField] private float attackRange = 50f;
     [Tooltip("1回の攻撃ダメージ")]
-    public int attackDamage = 100;
+    [SerializeField] private int attackDamage = 100;
 
     [Tooltip("攻撃 / Net モーション中ロックの最大時間（秒）。アニメ終了検知のフェイルセーフ。")]
-    public float maxActionDuration = 2f;
+    [SerializeField] private float maxActionDuration = 2f;
 
     [Header("Net (Web) Settings")]
     [Tooltip("プレイヤーの調整可能ステータス（Net の停止時間などを保持）")]
@@ -36,9 +37,9 @@ public class Player : MonoBehaviour, IFreezable
 
     [Header("Jump Settings")]
     [Tooltip("ジャンプの最高到達高さ（m）")]
-    public float jumpHeight = 1.5f;
+    [SerializeField] private float jumpHeight = 1.5f;
     [Tooltip("重力加速度（負の値）")]
-    public float gravity = -20f;
+    [SerializeField] private float gravity = -20f;
 
     private CharacterController _controller;
     private float _verticalVelocity;
@@ -79,10 +80,8 @@ void Awake()
         _controller = GetComponent<CharacterController>();
 
         // Player 本体ではなく、Spider モデル側の Animator（コントローラ付き）を取得する
-        foreach (var a in GetComponentsInChildren<Animator>(true))
-        {
-            if (a.runtimeAnimatorController != null) { _animator = a; break; }
-        }
+        _animator = GetComponentsInChildren<Animator>(true)
+            .FirstOrDefault(a => a.runtimeAnimatorController != null);
         _animator?.SetTrigger("Idle");
         if (orientation == null) orientation = transform;
 
@@ -121,24 +120,35 @@ void Awake()
             SpawnWebImpact();
         }
 
+        // 水平移動量（カメラ基準）を算出する
+        Vector3 horizontal = Vector3.zero;
         if (isMoving)
         {
             Vector3 forward = orientation.forward;
             Vector3 right = orientation.right;
             forward.y = 0f; right.y = 0f;
             forward.Normalize(); right.Normalize();
-            Vector3 move = (forward * input.z + right * input.x).normalized;
-            transform.Translate(move * speed * Time.deltaTime, Space.World);
+            horizontal = (forward * input.z + right * input.x).normalized * speed;
         }
 
-        ApplyJumpAndGravity();
+        // ジャンプ / 重力で垂直速度を更新する
+        UpdateVerticalVelocity();
+
+        // 水平 + 垂直を 1 回の CharacterController.Move で適用する。
+        // transform.Translate と Move を混在させると CharacterController の衝突解決
+        // （overlap recovery）と競合して移動できなくなるため、必ず Move に統一する。
+        Vector3 velocity = horizontal + Vector3.up * _verticalVelocity;
+        if (_controller != null)
+            _controller.Move(velocity * Time.deltaTime);
+        else
+            transform.Translate(horizontal * Time.deltaTime, Space.World);
     }
 
     /// <summary>
-    /// 接地判定に基づきジャンプ入力を処理し、重力による垂直移動を
-    /// CharacterController に適用する。水平移動は既存の transform.Translate のまま。
+    /// 接地判定に基づきジャンプ入力を処理し、重力で垂直速度（_verticalVelocity）を更新する。
+    /// 実際の移動適用（Move）は Tick 側で水平移動とまとめて 1 回だけ行う。
     /// </summary>
-    private void ApplyJumpAndGravity()
+    private void UpdateVerticalVelocity()
     {
         if (_controller == null) return;
 
@@ -154,7 +164,6 @@ void Awake()
         }
 
         _verticalVelocity += gravity * Time.deltaTime;
-        _controller.Move(Vector3.up * _verticalVelocity * Time.deltaTime);
     }
 
     /// <summary>

@@ -10,20 +10,20 @@ public class EnemySpawner : MonoBehaviour, IFreezable
 {
     [Header("Spawn Settings")]
     [Tooltip("出現させる敵のリスト")]
-    public List<EnemySpawnData> enemyPool = new List<EnemySpawnData>();
+    [SerializeField] private List<EnemySpawnData> enemyPool = new List<EnemySpawnData>();
 
     [Space]
     [Tooltip("敵をスポーンさせる間隔（秒）")]
-    public float spawnInterval = 3f;
+    [SerializeField] private float spawnInterval = 3f;
 
     [Tooltip("同時に存在できる敵の最大数")]
-    public int maxEnemies = 5;
+    [SerializeField] private int maxEnemies = 5;
 
     [Tooltip("敵がスポーンする位置のTransform")]
-    public Transform spawnPoint;
+    [SerializeField] private Transform spawnPoint;
 
     [Header("湧き範囲の半径")]
-    public float spawnRadius = 5f;
+    [SerializeField] private float spawnRadius = 5f;
 
     [Header("NavMesh Settings")]
     /// <summary>NavMesh 上の点を探す際の許容距離。候補点からこの距離内に NavMesh があれば採用</summary>

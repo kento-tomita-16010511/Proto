@@ -27,13 +27,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2296039513650105455}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.88930863, y: 0, z: 0, w: 0.45730758}
-  m_LocalPosition: {x: 0.0037803256, y: -0.016150648, z: -0.0008596998}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.0037803256, y: 0.853, z: 0.621}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 125.573, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!198 &2096761646743242019
 ParticleSystem:
   m_ObjectHideFlags: 0
@@ -4907,8 +4907,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cea2d8c0ee427134386bb5dabef384ea, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WebStunEffect
-  stunRadius: 2
   lifetime: 2
-  hitMask:
-    serializedVersion: 2
-    m_Bits: 4294967295

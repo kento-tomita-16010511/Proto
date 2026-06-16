@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
@@ -157,11 +158,8 @@ public class SceneLoader : MonoBehaviour
     {
         var scene = SceneManager.GetSceneByName(sceneName);
         if (!scene.IsValid()) return null;
-        foreach (var root in scene.GetRootGameObjects())
-        {
-            var comp = root.GetComponentInChildren<T>(true);
-            if (comp != null) return comp;
-        }
-        return null;
+        return scene.GetRootGameObjects()
+            .Select(root => root.GetComponentInChildren<T>(true))
+            .FirstOrDefault(comp => comp != null);
     }
 }

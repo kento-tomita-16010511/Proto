@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using System.Linq;
 
 /// <summary>
 /// 入力の有効 / 無効を切り替える View クラス。
@@ -13,18 +14,18 @@ public class InputGuardView : MonoBehaviour
     [SerializeField] private InputManager inputManager;
 
     /// <summary>全入力を無効化する。</summary>
-    public void DisableInput()
-    {
-        if (inputManager != null) inputManager.IsEnabled = false;
-        foreach (var c in cameraControllers)
-            if (c != null) c.enabled = false;
-    }
+    public void DisableInput() => SetInputEnabled(false);
 
     /// <summary>全入力を有効化する。</summary>
-    public void EnableInput()
+    public void EnableInput() => SetInputEnabled(true);
+
+    /// <summary>InputManager とカメラ操作の有効 / 無効をまとめて切り替える。</summary>
+    private void SetInputEnabled(bool isEnabled)
     {
-        if (inputManager != null) inputManager.IsEnabled = true;
-        foreach (var c in cameraControllers)
-            if (c != null) c.enabled = true;
+        if (inputManager != null) inputManager.IsEnabled = isEnabled;
+        cameraControllers
+            .Where(c => c != null)
+            .ToList()
+            .ForEach(c => c.enabled = isEnabled);
     }
 }
