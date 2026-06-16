@@ -421,3 +421,329 @@ void FixedUpdate()
     rb.MovePosition(rb.position + direction * speed * Time.fixedDeltaTime);
 }
 ```
+
+---
+
+## シーン管理規約
+
+### 概要
+
+すべてのシーンには必ず `~~Scene` という名前（例: TitleScene, MainScene, ResultScene）の
+GameObjectを1つ配置し、BaseScene を継承した起点クラスをアタッチすること。
+各シーンの実装は MVPパターンに従い、以下の3クラスに分割する。
+
+- `~~SceneModel`     … シーンの状態・データ管理
+- `~~SceneView`      … UI表示・入力受付・イベント公開
+- `~~ScenePresenter` … ロジック・ViewとModelの仲介・シーン遷移の実行
+
+---
+
+### ディレクトリ構成
+
+```
+Assets/Scripts/
+├── Title/
+│   ├── Model/      TitleSceneModel.cs
+│   ├── View/       TitleSceneView.cs
+│   └── Presenter/  TitleScenePresenter.cs
+├── Main/
+│   ├── Model/
+│   ├── View/
+│   └── Presenter/
+├── Result/
+│   ├── Model/
+│   ├── View/
+│   └── Presenter/
+└── Common/
+    ├── BaseScene.cs
+    ├── SceneLoader.cs
+    ├── SceneType.cs
+    └── ISceneLifecycle.cs
+```
+
+---
+
+### SceneType（シーン列挙体）
+
+シーン遷移の指定には文字列ではなく、必ず SceneType Enum を使用すること。
+シーン追加時はここに追記し、BuildSettings にも必ず追加すること。
+
+```csharp
+/// <summary>
+/// プロジェクト内の全シーンを定義するEnum。
+/// </summary>
+public enum SceneType
+{
+    Title,
+    Main,
+    Result,
+}
+```
+
+---
+
+### ISceneLifecycle インターフェース
+
+フェードイン・フェードアウトのタイミングで処理を挟むため、
+~~ScenePresenter は必ず ISceneLifecycle を実装すること。
+
+```csharp
+using Cysharp.Threading.Tasks;
+using System.Threading;
+
+/// <summary>
+/// シーンのライフサイクルイベントを定義するインターフェース。
+/// ~~ScenePresenter に実装し、BaseScene から委譲で呼ばれる。
+/// </summary>
+public interface ISceneLifecycle
+{
+    /// <summary>
+    /// シーンフェードイン完了後に呼ばれる。
+    /// BGM再生・初期アニメーションの開始などに使用する。
+    /// </summary>
+    UniTask OnAfterFadeInAsync(CancellationToken ct);
+
+    /// <summary>
+    /// シーンフェードアウト開始前に呼ばれる。
+    /// SEの停止・後処理などに使用する。
+    /// </summary>
+    UniTask OnBeforeFadeOutAsync(CancellationToken ct);
+}
+```
+
+---
+
+### BaseScene（起点オブジェクト）
+
+ロジックを持たず、Presenter への参照を保持して委譲するだけの薄いクラス。
+
+```csharp
+using Cysharp.Threading.Tasks;
+using System.Threading;
+using UnityEngine;
+
+/// <summary>
+/// 全シーンの起点となる基底クラス。
+/// 各シーンに1つだけ存在する ~~Scene オブジェクトにアタッチする。
+/// ロジックは持たず、~~ScenePresenter に委譲する。
+/// </summary>
+public abstract class BaseScene : MonoBehaviour
+{
+    /// <summary>このシーンのPresenter参照。Inspector から設定する</summary>
+    [SerializeField] private MonoBehaviour _presenterBehaviour;
+
+    /// <summary>ISceneLifecycle として Presenter を参照するプロパティ</summary>
+    private ISceneLifecycle Presenter => _presenterBehaviour as ISceneLifecycle;
+
+    /// <summary>
+    /// フェードイン完了後に Presenter へ委譲する。
+    /// </summary>
+    public async UniTask OnAfterFadeInAsync(CancellationToken ct)
+    {
+        if (Presenter == null) return;
+        await Presenter.OnAfterFadeInAsync(ct);
+    }
+
+    /// <summary>
+    /// フェードアウト前に Presenter へ委譲する。
+    /// </summary>
+    public async UniTask OnBeforeFadeOutAsync(CancellationToken ct)
+    {
+        if (Presenter == null) return;
+        await Presenter.OnBeforeFadeOutAsync(ct);
+    }
+}
+```
+
+---
+
+### SceneLoader（シーン遷移ユーティリティ）
+
+直接 SceneManager を呼ばず、必ずこのクラス経由で遷移すること。
+
+```csharp
+using Cysharp.Threading.Tasks;
+using System.Threading;
+using UnityEngine.SceneManagement;
+
+/// <summary>
+/// シーン遷移を一元管理するユーティリティクラス。
+/// </summary>
+public static class SceneLoader
+{
+    /// <summary>
+    /// 指定した SceneType のシーンを非同期でロードする。
+    /// </summary>
+    /// <param name="sceneType">遷移先シーン</param>
+    /// <param name="ct">キャンセルトークン</param>
+    public static async UniTask LoadAsync(SceneType sceneType, CancellationToken ct)
+    {
+        var sceneName = sceneType.ToString();
+        await SceneManager.LoadSceneAsync(sceneName)
+            .ToUniTask(cancellationToken: ct);
+    }
+}
+```
+
+---
+
+### 各クラスの責務
+
+| クラス | 基底 | 責務 | 禁止事項 |
+|--------|------|------|---------|
+| ~~SceneModel | ScriptableObject | データ・状態を ReactiveProperty で保持 | ロジック・表示操作 |
+| ~~SceneView | MonoBehaviour | UI表示・イベントをSubjectで公開 | ロジック・シーン遷移判断 |
+| ~~ScenePresenter | MonoBehaviour + ISceneLifecycle | ロジック実行・View/Model仲介・シーン遷移 | UnityEngine.UI への直接参照 |
+| BaseScene | MonoBehaviour | Presenterへの委譲のみ | ロジックを自身で持つこと |
+
+---
+
+### TitleScene 実装例
+
+#### TitleSceneModel.cs
+
+```csharp
+using UniRx;
+using UnityEngine;
+
+/// <summary>
+/// タイトルシーンのデータ・状態を管理するModelクラス。
+/// </summary>
+[CreateAssetMenu(fileName = "TitleSceneModel", menuName = "Model/TitleSceneModel")]
+public class TitleSceneModel : ScriptableObject
+{
+    /// <summary>ロゴのフェード完了フラグ</summary>
+    public IReadOnlyReactiveProperty<bool> IsLogoVisible => _isLogoVisible;
+    private readonly ReactiveProperty<bool> _isLogoVisible = new ReactiveProperty<bool>(false);
+
+    /// <summary>ロゴ表示状態を設定する</summary>
+    public void SetLogoVisible(bool visible) => _isLogoVisible.Value = visible;
+}
+```
+
+#### TitleSceneView.cs
+
+```csharp
+using UniRx;
+using UnityEngine;
+using UnityEngine.UI;
+
+/// <summary>
+/// タイトルシーンのUI表示・入力受付を担当するViewクラス。
+/// ロジックは持たず、イベント通知と表示操作のみ行う。
+/// </summary>
+public class TitleSceneView : MonoBehaviour
+{
+    /// <summary>ゲームスタートボタン</summary>
+    [SerializeField] private Button _startButton;
+
+    /// <summary>ロゴのフェードを制御するCanvasGroup</summary>
+    [SerializeField] private CanvasGroup _logoGroup;
+
+    /// <summary>スタートボタン押下イベント</summary>
+    public IObservable<Unit> OnStartButtonClicked => _onStartButtonClicked;
+    private readonly Subject<Unit> _onStartButtonClicked = new Subject<Unit>();
+
+    /// <summary>初期化：ボタンイベントを Subject に流す</summary>
+    private void Start()
+    {
+        _startButton.onClick
+            .AsObservable()
+            .Subscribe(_ => _onStartButtonClicked.OnNext(Unit.Default))
+            .AddTo(this);
+    }
+
+    /// <summary>ロゴのアルファ値を設定する</summary>
+    public void SetLogoAlpha(float alpha) => _logoGroup.alpha = alpha;
+
+    /// <summary>スタートボタンの表示を切り替える</summary>
+    public void SetStartButtonVisible(bool visible) => _startButton.gameObject.SetActive(visible);
+}
+```
+
+#### TitleScenePresenter.cs
+
+```csharp
+using Cysharp.Threading.Tasks;
+using System.Threading;
+using UniRx;
+using UnityEngine;
+
+/// <summary>
+/// タイトルシーンのロジックを担当するPresenterクラス。
+/// ISceneLifecycle を実装し、フェードイン・アウトのタイミングで処理を行う。
+/// </summary>
+public class TitleScenePresenter : MonoBehaviour, ISceneLifecycle
+{
+    /// <summary>タイトルシーンのView参照</summary>
+    [SerializeField] private TitleSceneView _view;
+
+    /// <summary>タイトルシーンのModel参照</summary>
+    [SerializeField] private TitleSceneModel _model;
+
+    /// <summary>初期化：ViewのイベントをSubscribeしてロジックに繋ぐ</summary>
+    private void Start()
+    {
+        _view.OnStartButtonClicked
+            .Subscribe(_ => OnStartButtonClickedAsync(this.GetCancellationTokenOnDestroy()).Forget())
+            .AddTo(this);
+    }
+
+    /// <summary>
+    /// フェードイン完了後の処理：ロゴを表示してスタートボタンを有効化する。
+    /// </summary>
+    public async UniTask OnAfterFadeInAsync(CancellationToken ct)
+    {
+        _view.SetLogoAlpha(1f);
+        _view.SetStartButtonVisible(true);
+        _model.SetLogoVisible(true);
+        await UniTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// フェードアウト前の処理：ボタンを非表示にして後処理を行う。
+    /// </summary>
+    public async UniTask OnBeforeFadeOutAsync(CancellationToken ct)
+    {
+        _view.SetStartButtonVisible(false);
+        await UniTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// スタートボタン押下時の処理：Mainシーンへ遷移する。
+    /// </summary>
+    private async UniTask OnStartButtonClickedAsync(CancellationToken ct)
+    {
+        await OnBeforeFadeOutAsync(ct);
+        await SceneLoader.LoadAsync(SceneType.Main, ct);
+    }
+}
+```
+
+#### TitleScene.cs（BaseScene継承）
+
+```csharp
+using UnityEngine;
+
+/// <summary>
+/// タイトルシーンの起点オブジェクト。
+/// TitleScene GameObject にアタッチし、Presenterへの参照を保持する。
+/// ロジックは TitleScenePresenter に委譲する。
+/// </summary>
+public class TitleScene : BaseScene
+{
+}
+```
+
+---
+
+### 規約まとめ
+
+- 各シーンに `~~Scene` という名前の GameObject を **必ず1つだけ** 配置する
+- `BaseScene` を継承したクラスをアタッチし、Inspector で `~~ScenePresenter` を参照させる
+- ロジック・シーン遷移は `~~ScenePresenter` に集約し、`BaseScene` はロジックを持たない
+- `ISceneLifecycle` は `~~ScenePresenter` が実装し、`BaseScene` は委譲するだけにする
+- シーン遷移は `SceneLoader.LoadAsync(SceneType, ct)` 経由のみとし、直接 `SceneManager` を呼ばない
+- `SceneType` Enum にシーンを追加した場合は BuildSettings にも必ず追加すること
+- すべての非同期処理は UniTask + CancellationToken 必須
+- 購読は必ず AddTo(this) または CompositeDisposable で破棄すること
