@@ -45,26 +45,28 @@ public class GameManager : MonoBehaviour
         // else ブランチの UnfreezeAll() が走って入力が早期有効化されてしまう。
         InputManager.Instance.IsEscapePressed
             .Skip(1)
-            .Subscribe(isPressed =>
-            {
-                if (isPressed)
-                {
-                    // ポーズ（タイマー停止 + Freeze）は GameManager が担当し、
-                    // ポップアップの生成・表示は PopupManager に委譲する（機能分離）。
-                    // Time.timeScale は使用禁止のため、タイマーは Pause() で個別に停止する（CLAUDE.md 規約）。
-                    timerController?.Pause();
-                    mainSceneActivator?.FreezeAll();
-                    OpenSettingsAsync(this.GetCancellationTokenOnDestroy()).Forget();
-                }
-                else
-                {
-                    // 設定が閉じられた時にゲームを再開させる
-                    _activePopup?.RequestClose();
-                    timerController?.Resume();
-                    mainSceneActivator?.UnfreezeAll();
-                }
-            })
+            .Subscribe(isPressed => { if (isPressed) EnterPause(); else ExitPause(); })
             .AddTo(this);
+    }
+
+    /// <summary>
+    /// ポーズに入る。タイマー停止 + ロジック Freeze を行い、設定ポップアップを表示する。
+    /// ポーズ処理は GameManager が担当し、ポップアップの生成・表示は PopupManager に委譲する（機能分離）。
+    /// </summary>
+    private void EnterPause()
+    {
+        // Time.timeScale は使用禁止のため、タイマーは Pause() で個別に停止する（CLAUDE.md 規約）。
+        timerController?.Pause();
+        mainSceneActivator?.FreezeAll();
+        OpenSettingsAsync(this.GetCancellationTokenOnDestroy()).Forget();
+    }
+
+    /// <summary>ポーズを解除する。設定ポップアップを閉じ、タイマー / ロジックを再開する。</summary>
+    private void ExitPause()
+    {
+        _activePopup?.RequestClose();
+        timerController?.Resume();
+        mainSceneActivator?.UnfreezeAll();
     }
 
     /// <summary>設定ポップアップを生成・表示し、閉じられたら ESC トグル状態を同期する。</summary>

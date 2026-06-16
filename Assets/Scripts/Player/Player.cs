@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using UniRx;
+using System.Linq;
 
 public class Player : MonoBehaviour, IFreezable
 {
@@ -79,10 +80,8 @@ void Awake()
         _controller = GetComponent<CharacterController>();
 
         // Player 本体ではなく、Spider モデル側の Animator（コントローラ付き）を取得する
-        foreach (var a in GetComponentsInChildren<Animator>(true))
-        {
-            if (a.runtimeAnimatorController != null) { _animator = a; break; }
-        }
+        _animator = GetComponentsInChildren<Animator>(true)
+            .FirstOrDefault(a => a.runtimeAnimatorController != null);
         _animator?.SetTrigger("Idle");
         if (orientation == null) orientation = transform;
 

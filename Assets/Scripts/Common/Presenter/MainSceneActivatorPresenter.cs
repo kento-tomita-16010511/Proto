@@ -1,5 +1,6 @@
 ﻿using Cysharp.Threading.Tasks;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 /// <summary>
@@ -29,17 +30,13 @@ public class MainSceneActivatorPresenter : MonoBehaviour
     {
         mainSceneView?.ShowCameraOnly();
 
-        // logicRoots 配下から IFreezable を実装したコンポーネントを収集する
+        // logicRoots 配下から IFreezable を実装したコンポーネントを収集する（子要素含む）
         if (logicRoots != null)
         {
-            foreach (var root in logicRoots)
-            {
-                if (root == null) continue;
-
-                // 子要素を含めて IFreezable を検索しリストに追加
-                var found = root.GetComponentsInChildren<IFreezable>(true);
-                _freezables.AddRange(found);
-            }
+            _freezables.AddRange(
+                logicRoots
+                    .Where(root => root != null)
+                    .SelectMany(root => root.GetComponentsInChildren<IFreezable>(true)));
         }
 
         FreezeAll();
@@ -55,11 +52,7 @@ public class MainSceneActivatorPresenter : MonoBehaviour
         _isFrozen = true;
 
         // 各コンポーネント独自の停止処理を実行
-        foreach (var freezable in _freezables)
-        {
-            if (freezable == null) continue;
-            freezable.Freeze();
-        }
+        _freezables.Where(f => f != null).ToList().ForEach(f => f.Freeze());
 
         inputGuard?.DisableInput();
     }
@@ -84,11 +77,7 @@ public class MainSceneActivatorPresenter : MonoBehaviour
         _isFrozen = false;
 
         // 各コンポーネント独自の再開処理を実行
-        foreach (var freezable in _freezables)
-        {
-            if (freezable == null) continue;
-            freezable.Unfreeze();
-        }
+        _freezables.Where(f => f != null).ToList().ForEach(f => f.Unfreeze());
     }
 
     /// <summary>
