@@ -121,24 +121,35 @@ void Awake()
             SpawnWebImpact();
         }
 
+        // 水平移動量（カメラ基準）を算出する
+        Vector3 horizontal = Vector3.zero;
         if (isMoving)
         {
             Vector3 forward = orientation.forward;
             Vector3 right = orientation.right;
             forward.y = 0f; right.y = 0f;
             forward.Normalize(); right.Normalize();
-            Vector3 move = (forward * input.z + right * input.x).normalized;
-            transform.Translate(move * speed * Time.deltaTime, Space.World);
+            horizontal = (forward * input.z + right * input.x).normalized * speed;
         }
 
-        ApplyJumpAndGravity();
+        // ジャンプ / 重力で垂直速度を更新する
+        UpdateVerticalVelocity();
+
+        // 水平 + 垂直を 1 回の CharacterController.Move で適用する。
+        // transform.Translate と Move を混在させると CharacterController の衝突解決
+        // （overlap recovery）と競合して移動できなくなるため、必ず Move に統一する。
+        Vector3 velocity = horizontal + Vector3.up * _verticalVelocity;
+        if (_controller != null)
+            _controller.Move(velocity * Time.deltaTime);
+        else
+            transform.Translate(horizontal * Time.deltaTime, Space.World);
     }
 
     /// <summary>
-    /// 接地判定に基づきジャンプ入力を処理し、重力による垂直移動を
-    /// CharacterController に適用する。水平移動は既存の transform.Translate のまま。
+    /// 接地判定に基づきジャンプ入力を処理し、重力で垂直速度（_verticalVelocity）を更新する。
+    /// 実際の移動適用（Move）は Tick 側で水平移動とまとめて 1 回だけ行う。
     /// </summary>
-    private void ApplyJumpAndGravity()
+    private void UpdateVerticalVelocity()
     {
         if (_controller == null) return;
 
@@ -154,7 +165,6 @@ void Awake()
         }
 
         _verticalVelocity += gravity * Time.deltaTime;
-        _controller.Move(Vector3.up * _verticalVelocity * Time.deltaTime);
     }
 
     /// <summary>
