@@ -19,9 +19,14 @@ public class WebStunEffect : MonoBehaviour
         _particle = GetComponent<ParticleSystem>();
 
         // ParticleSystem の当たり判定でスタンを与えるため、衝突モジュールを有効化する。
+        // CharacterController は Unity の標準物理コライダーとして認識されないため、
+        // 敵 Prefab に別途 CapsuleCollider（StunCollider）を追加して検出している。
         var collision = _particle.collision;
         collision.enabled = true;
         collision.type = ParticleSystemCollisionType.World;
+        collision.mode = ParticleSystemCollisionMode.Collision3D;
+        collision.quality = ParticleSystemCollisionQuality.High; // Medium 以下はコールバックが不安定
+        collision.enableDynamicColliders = true; // 動的オブジェクト（NavMeshAgent 等）も検出
         collision.sendCollisionMessages = true;
     }
 

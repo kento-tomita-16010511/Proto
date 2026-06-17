@@ -170,7 +170,6 @@ GameObject:
   - component: {fileID: 2197702747431416027}
   - component: {fileID: 2197702747431416024}
   - component: {fileID: 2197702747431416025}
-  - component: {fileID: 9091058817286033504}
   - component: {fileID: 8630431548009652936}
   - component: {fileID: 5202225536994126275}
   m_Layer: 0
@@ -195,6 +194,7 @@ Transform:
   m_Children:
   - {fileID: 3498498511392652934}
   - {fileID: 3744575382195302635}
+  - {fileID: 1045646292033891403}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!143 &2197702747431416027
@@ -268,20 +268,6 @@ MonoBehaviour:
     body: 0.3
     head: 0.7
     eyes: 1
---- !u!114 &9091058817286033504
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1527881004230699645}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8950a4a40bebca0489853d9739c6b906, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AnimalEnemy
-  maxHP: 100
-  scoreValue: 10
 --- !u!114 &8630431548009652936
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -294,8 +280,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 35d715b26fc1b9a42825acca26cb5894, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyPresenter
-  enemyStateTemplate: {fileID: 11400000, guid: c194602cd983bee4780e48032833a170, type: 2}
+  maxHP: 100
+  scoreValue: 10
+  enemyState: {fileID: 11400000, guid: c194602cd983bee4780e48032833a170, type: 2}
   view: {fileID: 6573582005355188743, guid: 6b0b0b098177a3b439c80991ec9deacc, type: 3}
+  eyeTransforms: []
+  detectionMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
 --- !u!114 &5202225536994126275
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -308,7 +300,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b0bb5632d029fe4a8ecefbe63cb35cb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyView
-  agent: {fileID: 0}
+  creatureMover: {fileID: 0}
+  damageVFX: {fileID: 0}
+  visualRoot: {fileID: 0}
 --- !u!1 &1594975112139590255
 GameObject:
   m_ObjectHideFlags: 0
@@ -713,6 +707,61 @@ Transform:
   - {fileID: 7073502676405309907}
   m_Father: {fileID: 5583908561095873928}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &7456980189706257823
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1045646292033891403}
+  - component: {fileID: 3891745964976702711}
+  m_Layer: 0
+  m_Name: StunCollider
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1045646292033891403
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7456980189706257823}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2197702747431416007}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!136 &3891745964976702711
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7456980189706257823}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.5
+  m_Height: 1.71
+  m_Direction: 1
+  m_Center: {x: 0, y: 0.88, z: 0}
 --- !u!1 &7467083386820001486
 GameObject:
   m_ObjectHideFlags: 0
