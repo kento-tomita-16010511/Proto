@@ -236,7 +236,9 @@ public class Player : MonoBehaviour, IFreezable
             case "Enemy":
                 // 敵にダメージを与える
                 var enemy = other.collider.GetComponent<EnemyBasePresenter>();
-                if (enemy != null && attackCollider.bounds.Intersects(other.collider.bounds))
+                AnimatorClipInfo[] clipInfo = _animator.GetCurrentAnimatorClipInfo(0);
+                string clipName = clipInfo[0].clip.name;
+                if (enemy != null && attackCollider.bounds.Intersects(other.collider.bounds) && clipName == "Attack")
                 {
                     enemy.TakeDamage(attackDamage);
                 }
