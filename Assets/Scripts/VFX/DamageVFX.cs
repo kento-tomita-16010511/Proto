@@ -11,8 +11,16 @@ public class DamageVFX : MonoBehaviour
     public SkinnedMeshRenderer myRenderer;
     public VisualEffect shatterVFX;
 
+    /// <summary>
+    /// 砕け散る VFX を再生し、本体メッシュを非表示にして演出時間だけ待機する。
+    /// 本体（敵ルート）の破棄は呼び出し側（EnemyPresenter.OnDie）が担うため、
+    /// ここでは破棄を行わない。Collider は同じ GameObject に存在する場合のみ無効化する。
+    /// </summary>
     public async UniTask DieAsync()
     {
+        // VFX 用 GameObject はデフォルトで非アクティブな場合があるため、再生前に有効化する。
+        // これを忘れると shatterVFX.Play() が走っても描画されない。
+        gameObject.SetActive(true);
 
         if (shatterVFX != null && myRenderer != null)
         {
@@ -30,20 +38,10 @@ public class DamageVFX : MonoBehaviour
             shatterVFX.Play();
         }
 
-        gameObject.SetActive(true);
-
         // 4. 敵の本体（メッシュ）を一瞬で非表示にする
-        myRenderer.enabled = false;
+        if (myRenderer != null) myRenderer.enabled = false;
 
-        // 5. 当たり判定などを消す
-        GetComponent<Collider>().enabled = false;
-
-        // 6. 後処理（3秒後にオブジェクトを完全に削除）
-        Destroy(gameObject, 3f);
-
+        // 5. VFX の再生時間だけ待機（当たり判定の無効化と本体破棄は呼び出し側が行う）
         await UniTask.Delay(3000);
-
-        gameObject.SetActive(false);
-
     }
 }

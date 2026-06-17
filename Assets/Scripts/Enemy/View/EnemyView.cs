@@ -23,7 +23,18 @@ public class EnemyView : MonoBehaviour
     /// </summary>
     [SerializeField] private Transform visualRoot;
 
-    public UniTask PlayDamageVFXAsync => damageVFX.DieAsync();
+    /// <summary>破壊エフェクト（DamageVFX）がアサインされているか。</summary>
+    public bool HasDamageVFX => damageVFX != null;
+
+    /// <summary>
+    /// 破壊エフェクト（砕け散る VFX）を再生する。
+    /// DamageVFX 未アサインの場合は何もせず即完了する。
+    /// </summary>
+    public UniTask PlayDamageVFXAsync()
+    {
+        if (damageVFX == null) return UniTask.CompletedTask;
+        return damageVFX.DieAsync();
+    }
 
     /// <summary>移動を担う NavMeshAgent。未設定時は Awake で自動取得する。</summary>
 

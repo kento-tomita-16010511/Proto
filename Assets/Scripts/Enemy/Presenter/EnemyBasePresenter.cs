@@ -39,13 +39,23 @@ public abstract class EnemyBasePresenter : MonoBehaviour, IEnemy
     }
 
     /// <summary>
-    /// 死亡時の基本処理。必要に応じてオーバーライドしてください。
+    /// 死亡時の基本処理。死亡通知とスコア加算を行い、破棄戦略 OnDie() に委譲する。
     /// </summary>
     protected virtual void Die()
     {
         _onDeath.OnNext(Unit.Default);
         if (ScoreManager.Instance != null)
             ScoreManager.Instance.AddScore(scoreValue);
+        OnDie();
+    }
+
+    /// <summary>
+    /// 死亡時の破棄処理。デフォルトは即破棄。
+    /// 砕け散る VFX 等の演出を挟みたい場合はオーバーライドし、
+    /// 演出側で破棄を行う（または演出後に Destroy する）こと。
+    /// </summary>
+    protected virtual void OnDie()
+    {
         Destroy(gameObject);
     }
 
