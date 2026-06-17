@@ -135,6 +135,9 @@ public class GameManager : MonoBehaviour
         // 4. Spider に Intimidation アニメーションを再生させる
         player?.PlayIntimidation();
 
+        // リザルト中は入力を完全に無効化する
+        InputManager.Instance.enabled = false;
+
         // 5. 演出のための間を置いてから ResultScene を additive でロード
         await UniTask.Delay(System.TimeSpan.FromSeconds(0.5f), cancellationToken: ct);
 

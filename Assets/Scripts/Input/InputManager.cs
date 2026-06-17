@@ -16,7 +16,6 @@ public class InputManager : MonoBehaviour
     public bool AttackPressedThisFrame { get; private set; }
     public bool NetPressedThisFrame { get; private set; }
     public bool JumpPressedThisFrame { get; private set; }
-    public Vector2 MouseScreenPosition { get; private set; }
 
     private void Awake()
     {
@@ -32,8 +31,8 @@ public class InputManager : MonoBehaviour
     /// <summary>毎フレームの入力取得処理。EveryUpdate から呼ばれる。</summary>
     private void Tick()
     {
-        // マウス座標はIsEnabledに関わらず常に更新（Raycast用）
-        MouseScreenPosition = ReadMouseScreenPosition();
+        if(enabled == false) return; // InputManager 自体が無効化されている場合は何もしない
+
         OnEscapePressed();
 
         if (!IsEnabled)

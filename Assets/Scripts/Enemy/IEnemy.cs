@@ -14,4 +14,9 @@ public interface IEnemy
     /// </summary>
     /// <param name="amount">ダメージ量</param>
     void TakeDamage(int amount);
+
+    /// <summary>
+    /// 死亡処理。HPが0以下になったときに呼び出されるべきメソッド。
+    /// </summary>
+    void Die();
 }

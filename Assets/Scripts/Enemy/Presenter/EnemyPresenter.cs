@@ -1,3 +1,6 @@
+using System;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.Serialization;
@@ -10,7 +13,7 @@ using UniRx;
 /// 判定①：左右の eyeTransforms を起点としたレイキャスト付き FOV 感知
 /// 判定②：ボディ中心からの近接全方位球体（近接感知）
 /// </summary>
-public class EnemyPresenter : MonoBehaviour
+public class EnemyPresenter : EnemyBasePresenter
 {
     /// <summary>検知パラメータ（敵ごとに専用の EnemyState.asset をアサインする）。</summary>
     [SerializeField, FormerlySerializedAs("enemyStateTemplate")]
@@ -40,9 +43,13 @@ public class EnemyPresenter : MonoBehaviour
     /// <summary>スタンが解除される時刻（Time.time 基準）。</summary>
     private float _stunEndTime;
 
+    /// <summary>シェイク UniTask のキャンセル用。再スタン時に前回シェイクを停止する。</summary>
+    private CancellationTokenSource _shakeCts;
+
     /// <summary>EnemyState を per-instance にクローンし、View を取得する。</summary>
-    private void Awake()
+    protected override void Awake()
     {
+        base.Awake();
         _state = ScriptableObject.Instantiate(enemyState);
         if (view == null) view = GetComponent<EnemyView>();
     }
@@ -116,7 +123,6 @@ public class EnemyPresenter : MonoBehaviour
         }
     }
 
-    /// <summary>
     /// 全 eyeTransforms からレイキャスト付き FOV 判定を行い、
     /// いずれかの目からプレイヤーが見えた場合 true を返す。
     /// 障害物がなければ可視、最初のヒットが Player タグなら可視と判定する。
@@ -151,17 +157,22 @@ public class EnemyPresenter : MonoBehaviour
     }
 
     /// <summary>
-    /// 指定時間だけ行動を停止する（Net による足止め）。
-    /// 逃走状態を解除し移動を止め、Stunned 状態へ移行する。
+    /// Net に被弾した際に行動を停止する。
+    /// 停止時間・シェイクパラメータは EnemyState（EnemyModel）から取得する。
+    /// 再スタン時は前回のシェイクをキャンセルして新しいシェイクを開始する。
     /// </summary>
-    /// <param name="duration">停止時間（秒）。</param>
-    public void Stun(float duration)
+    public void Stun()
     {
         _isStunned = true;
-        _stunEndTime = Time.time + duration;
+        _stunEndTime = Time.time + _state.StunDuration;
         _isFleeing = false;
         _state.SetBehavior(EnemyBehavior.Stunned);
         view.StopMoving();
+
+        _shakeCts?.Cancel();
+        _shakeCts?.Dispose();
+        _shakeCts = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
+        view.PlayStunShakeAsync(_state.StunDuration, _state.StunShakeAmplitude, _state.StunShakeFrequency, _shakeCts.Token).Forget();
     }
 
     /// <summary>逃走を開始する。</summary>
@@ -206,9 +217,11 @@ public class EnemyPresenter : MonoBehaviour
         return transform.position + awayDir * _state.FleeDistance;
     }
 
-    /// <summary>クローンした EnemyState インスタンスを破棄する。</summary>
+    /// <summary>クローンした EnemyState と進行中のシェイクタスクを破棄する。</summary>
     private void OnDestroy()
     {
+        _shakeCts?.Cancel();
+        _shakeCts?.Dispose();
         if (_state != null) Destroy(_state);
     }
 
