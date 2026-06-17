@@ -40,6 +40,9 @@ public class EnemyPresenter : EnemyBasePresenter
     /// <summary>スタン（行動停止）中かどうか。</summary>
     private bool _isStunned;
 
+    /// <summary>死亡処理中かどうか。死亡後は逃走判定・スタンを停止する。</summary>
+    private bool _isDead;
+
     /// <summary>スタンが解除される時刻（Time.time 基準）。</summary>
     private float _stunEndTime;
 
@@ -82,7 +85,7 @@ public class EnemyPresenter : EnemyBasePresenter
 
     private void UpdateDetection()
     {
-        if (_player == null) return;
+        if (_player == null || _isDead) return;
 
         // スタン中は逃走判定を行わず行動を停止する。時間経過で Idle に復帰する。
         if (_isStunned)
@@ -173,6 +176,36 @@ public class EnemyPresenter : EnemyBasePresenter
         _shakeCts?.Dispose();
         _shakeCts = CancellationTokenSource.CreateLinkedTokenSource(this.GetCancellationTokenOnDestroy());
         view.PlayStunShakeAsync(_state.StunDuration, _state.StunShakeAmplitude, _state.StunShakeFrequency, _shakeCts.Token).Forget();
+    }
+
+    /// <summary>
+    /// 死亡時の破棄処理をオーバーライドし、砕け散る VFX を再生してから破棄する。
+    /// VFX 側（DamageVFX.DieAsync）がメッシュ非表示・コライダー無効化・3 秒後の破棄を担うため、
+    /// ここでは即破棄せず VFX 完了を待つ。VFX 未アサインの場合は即破棄にフォールバックする。
+    /// </summary>
+    protected override void OnDie()
+    {
+        _isDead = true;
+        _shakeCts?.Cancel();
+        view.StopMoving();
+
+        // メッシュ非表示後に当たり判定が残らないよう、配下のコライダーを全て無効化する
+        // （ルートの CharacterController と StunCollider など）。
+        foreach (var col in GetComponentsInChildren<Collider>(true))
+            col.enabled = false;
+
+        PlayDeathVFXAsync().Forget();
+    }
+
+    /// <summary>
+    /// 破壊エフェクトを再生し、再生完了（または未アサイン）後に本体を破棄する。
+    /// </summary>
+    private async UniTaskVoid PlayDeathVFXAsync()
+    {
+        if (view != null && view.HasDamageVFX)
+            await view.PlayDamageVFXAsync();
+
+        if (this != null) Destroy(gameObject);
     }
 
     /// <summary>逃走を開始する。</summary>

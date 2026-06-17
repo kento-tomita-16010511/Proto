@@ -1358,7 +1358,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyView
   creatureMover: {fileID: 8881504610387854121}
   damageVFX: {fileID: 1886422874201024166}
-  visualRoot: {fileID: 0}
+  visualRoot: {fileID: 8881504610387854135}
 --- !u!1 &8122850409471221505
 GameObject:
   m_ObjectHideFlags: 0

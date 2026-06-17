@@ -1540,6 +1540,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8757819230280848074, guid: 71739d14d69548d48a486ed0b16443c5, type: 3}
+      propertyPath: myRenderer
+      value: 
+      objectReference: {fileID: 7859736817349278344}
+    - target: {fileID: 8757819230280848074, guid: 71739d14d69548d48a486ed0b16443c5, type: 3}
       propertyPath: shatterVFX
       value: 
       objectReference: {fileID: 1807640820221566940}
