@@ -1,3 +1,5 @@
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using ithappy.Animals_FREE;
 using UnityEngine;
 using UnityEngine.AI;
@@ -11,6 +13,17 @@ public class EnemyView : MonoBehaviour
 {
     /// <summary>CharacterController ベースの移動コンポーネント。NavMeshAgent がない場合に使用する。</summary>
     [SerializeField] private CreatureMover creatureMover;
+
+    [SerializeField] private DamageVFX damageVFX;
+
+    /// <summary>
+    /// スタン中に横揺れさせるビジュアル用の子 Transform。
+    /// NavMeshAgent はルート Transform を制御するため、揺れはこの子で行う。
+    /// 未設定の場合はシェイクをスキップする。
+    /// </summary>
+    [SerializeField] private Transform visualRoot;
+
+    public UniTask PlayDamageVFXAsync => damageVFX.DieAsync();
 
     /// <summary>移動を担う NavMeshAgent。未設定時は Awake で自動取得する。</summary>
 
@@ -55,6 +68,37 @@ public class EnemyView : MonoBehaviour
         else
         {
             Debug.LogWarning($"[EnemyView:{name}] agent も creatureMover も null。移動不可。");
+        }
+    }
+
+    /// <summary>
+    /// スタン中に横揺れアニメーションを再生する。
+    /// visualRoot を sin 波で左右にオフセットし、duration 秒後（または ct キャンセル時）に元位置へ戻す。
+    /// </summary>
+    public async UniTask PlayStunShakeAsync(float duration, float amplitude, float frequency, CancellationToken ct)
+    {
+        if (visualRoot == null)
+        {
+            Debug.LogWarning($"[EnemyView:{name}] visualRoot が未設定のためスタンシェイクをスキップします。");
+            return;
+        }
+
+        var originalLocalPos = visualRoot.localPosition;
+        float elapsed = 0f;
+        try
+        {
+            while (elapsed < duration)
+            {
+                float offset = Mathf.Sin(elapsed * frequency * Mathf.PI * 2f) * amplitude;
+                visualRoot.localPosition = originalLocalPos + Vector3.right * offset;
+                elapsed += Time.deltaTime;
+                await UniTask.Yield(ct);
+            }
+        }
+        finally
+        {
+            if (visualRoot != null)
+                visualRoot.localPosition = originalLocalPos;
         }
     }
 

@@ -28,8 +28,6 @@ public class Player : MonoBehaviour, IFreezable
     [SerializeField] private float maxActionDuration = 2f;
 
     [Header("Net (Web) Settings")]
-    [Tooltip("プレイヤーの調整可能ステータス（Net の停止時間などを保持）")]
-    [SerializeField] private PlayerStats stats;
     [Tooltip("Net で生成する蜘蛛の巣エフェクト（FX_SpiderWeb_Impact）")]
     [SerializeField] private GameObject webImpactPrefab;
     [Tooltip("エフェクトを生成する前方距離（m）")]
@@ -176,8 +174,9 @@ public class Player : MonoBehaviour, IFreezable
     }
 
     /// <summary>
-    /// プレイヤー前方に蜘蛛の巣エフェクトを生成し、停止時間を渡す。
+    /// プレイヤー前方に蜘蛛の巣エフェクトを生成する。
     /// Net アクション発火時に呼ばれる（検証用に public）。
+    /// スタン時間は衝突した敵の EnemyState（EnemyModel）が保持するため、ここで渡す必要はない。
     /// </summary>
     public void SpawnWebImpact()
     {
@@ -189,10 +188,7 @@ public class Player : MonoBehaviour, IFreezable
         fwd.Normalize();
 
         Vector3 pos = transform.position + fwd * webSpawnDistance;
-        var go = Instantiate(webImpactPrefab, pos, Quaternion.LookRotation(fwd));
-
-        var web = go.GetComponent<WebStunEffect>();
-        if (web != null) web.Initialize(stats != null ? stats.WebStunDuration : 0f);
+        Instantiate(webImpactPrefab, pos, Quaternion.LookRotation(fwd));
     }
 
     /// <summary>アクション（攻撃 / Net）を開始し、モーション完了までロックする。</summary>

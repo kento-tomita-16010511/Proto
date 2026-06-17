@@ -41,6 +41,16 @@ public class EnemyState : ScriptableObject
     /// <summary>逃走先を NavMesh 上に補正する際の許容距離（m）。</summary>
     [SerializeField] private float navMeshSampleDistance = 5f;
 
+    [Header("Stun Settings")]
+    /// <summary>Net に被弾した際に行動を停止させる時間（秒）。</summary>
+    [SerializeField] private float stunDuration = 3f;
+
+    /// <summary>スタン中の横揺れ幅（m）。</summary>
+    [SerializeField] private float stunShakeAmplitude = 0.15f;
+
+    /// <summary>スタン中の横揺れ速度（Hz）。</summary>
+    [SerializeField] private float stunShakeFrequency = 8f;
+
     private readonly ReactiveProperty<EnemyBehavior> _currentBehavior =
         new ReactiveProperty<EnemyBehavior>(EnemyBehavior.Idle);
 
@@ -73,6 +83,15 @@ public class EnemyState : ScriptableObject
 
     /// <summary>NavMesh サンプリング許容距離（m）。</summary>
     public float NavMeshSampleDistance => navMeshSampleDistance;
+
+    /// <summary>スタン持続時間（秒）。</summary>
+    public float StunDuration => stunDuration;
+
+    /// <summary>スタン中の横揺れ幅（m）。</summary>
+    public float StunShakeAmplitude => stunShakeAmplitude;
+
+    /// <summary>スタン中の横揺れ速度（Hz）。</summary>
+    public float StunShakeFrequency => stunShakeFrequency;
 
     /// <summary>現在の行動状態（読み取り専用の ReactiveProperty）。</summary>
     public IReadOnlyReactiveProperty<EnemyBehavior> CurrentBehavior => _currentBehavior;

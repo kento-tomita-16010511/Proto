@@ -11,15 +11,7 @@ public class WebStunEffect : MonoBehaviour
     /// <summary>エフェクト GameObject の自動破棄までの時間（秒）。</summary>
     [SerializeField] private float lifetime = 2f;
 
-    private float _stunDuration;
     private ParticleSystem _particle;
-
-    /// <summary>Player から停止時間を受け取る。生成直後に呼ぶこと。</summary>
-    /// <param name="duration">敵を停止させる時間（秒）。</param>
-    public void Initialize(float duration)
-    {
-        _stunDuration = duration;
-    }
 
     /// <summary>ParticleSystem を取得し、衝突メッセージ（OnParticleCollision）を有効化する。</summary>
     private void Awake()
@@ -40,12 +32,15 @@ public class WebStunEffect : MonoBehaviour
         Destroy(gameObject, lifetime);
     }
 
-    /// <summary>パーティクルが衝突した相手が敵ならスタンを与える。</summary>
+    /// <summary>
+    /// パーティクルが衝突した相手が敵ならスタンを与える。
+    /// 停止時間・シェイクパラメータは敵側の EnemyState（EnemyModel）から取得するため、
+    /// ここでは Stun() を呼ぶだけでよい。
+    /// </summary>
     /// <param name="other">パーティクルが衝突した GameObject。</param>
     private void OnParticleCollision(GameObject other)
     {
-        Debug.Log($"[WebStunEffect] OnParticleCollision with {other.name}");
         var enemy = other.GetComponentInParent<EnemyPresenter>();
-        if (enemy != null) enemy.Stun(_stunDuration);
+        if (enemy != null) enemy.Stun();
     }
 }
