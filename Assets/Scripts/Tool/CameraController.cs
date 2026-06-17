@@ -23,11 +23,6 @@ public class CameraController : MonoBehaviour
 
     void Start()
     {
-        if (lockCursor)
-        {
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible = false;
-        }
         if (playerBody == null && transform.parent != null)
         {
             playerBody = transform.parent;
@@ -38,6 +33,27 @@ public class CameraController : MonoBehaviour
             .Where(_ => InputManager.Instance?.IsEnabled ?? false)
             .Subscribe(_ => Tick())
             .AddTo(this);
+    }
+
+    // InputGuardView が enabled を切り替えるタイミングに合わせてカーソルロックを管理する。
+    // Start ではなく OnEnable/OnDisable で行うことで、Result 画面など非プレイ中に
+    // カーソルが中央固定のままになるのを防ぐ。
+    private void OnEnable()
+    {
+        if (lockCursor)
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (lockCursor)
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+        }
     }
 
     /// <summary>毎フレームのカメラ回転処理。EveryUpdate から入力有効時のみ呼ばれる。</summary>
