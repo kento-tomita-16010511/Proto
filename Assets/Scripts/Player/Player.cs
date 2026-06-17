@@ -20,7 +20,7 @@ public class Player : MonoBehaviour, IFreezable
 
     [Header("Attack Settings")]
     [Tooltip("攻撃が届く最大距離")]
-    [SerializeField] private float attackRange = 50f;
+    [SerializeField] private CapsuleCollider attackCollider;
     [Tooltip("1回の攻撃ダメージ")]
     [SerializeField] private int attackDamage = 100;
 
@@ -68,14 +68,24 @@ public class Player : MonoBehaviour, IFreezable
             }
     }
 
-    /// <summary>Intimidation（威嚇）アニメーションを再生する。リザルト演出で呼ぶ。</summary>
+    /// <summary>
+    /// Intimidation（威嚇）アニメーションを再生する。リザルト演出で呼ぶ。
+    /// タイムアップ時にキー押しっぱなしで遷移しても移動が続かないよう、
+    /// _frozen = true で Tick() を即停止し CharacterController への Move 呼び出しを断つ。
+    /// Freeze() と異なりアニメーターは止めない。
+    /// </summary>
     public void PlayIntimidation()
     {
+        _frozen = true;
+        _verticalVelocity = -2f; // 接地スナップ値でリセット（重力蓄積をクリア）
         if (_animator != null)
+        {
+            _animator.SetBool("IsMoving", false);
             _animator.SetTrigger("IntimidationTrigger");
+        }
     }
 
-void Awake()
+    void Awake()
     {
         _controller = GetComponent<CharacterController>();
 
@@ -110,7 +120,6 @@ void Awake()
         {
             BeginAction();
             SpawnEffect();
-            TryHitEnemy();
             _animator?.SetTrigger("AttackTrigger");
         }
         else if (!_actionLocked && net)
@@ -223,18 +232,19 @@ void Awake()
         }
     }
 
-    private void TryHitEnemy()
+    private void OnControllerColliderHit(ControllerColliderHit other)
     {
-        Camera cam = Camera.main;
-        if (cam == null) return;
-
-        Vector2 screenPos = InputManager.Instance?.MouseScreenPosition ?? Vector2.zero;
-        Ray ray = cam.ScreenPointToRay(new Vector3(screenPos.x, screenPos.y, 0f));
-        if (Physics.Raycast(ray, out RaycastHit hit, attackRange))
+        // 衝突したオブジェクトのタグに応じて処理を分岐する
+        switch (other.gameObject.tag)
         {
-            var enemy = hit.collider.GetComponent<EnemyBase>();
-            if (enemy != null)
-                enemy.TakeDamage(attackDamage);
+            case "Enemy":
+                // 敵にダメージを与える
+                var enemy = other.collider.GetComponent<EnemyBasePresenter>();
+                if (enemy != null && attackCollider.bounds.Intersects(other.collider.bounds))
+                {
+                    enemy.TakeDamage(attackDamage);
+                }
+                break;
         }
     }
 

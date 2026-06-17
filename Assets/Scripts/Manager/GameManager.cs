@@ -32,6 +32,12 @@ public class GameManager : MonoBehaviour
     /// <summary>現在表示中の設定ポップアップ（未表示なら null）。</summary>
     private SettingsPopup _activePopup;
 
+    /// <summary>
+    /// タイムアップ後に true になる。ESC によるポーズを封じ、
+    /// Result 画面中に設定ポップアップが開くのを防ぐ。
+    /// </summary>
+    private bool _isGameOver;
+
     private void Start()
     {
         _mainCamera = Camera.main;
@@ -45,7 +51,12 @@ public class GameManager : MonoBehaviour
         // else ブランチの UnfreezeAll() が走って入力が早期有効化されてしまう。
         InputManager.Instance.IsEscapePressed
             .Skip(1)
-            .Subscribe(isPressed => { if (isPressed) EnterPause(); else ExitPause(); })
+            .Subscribe(isPressed =>
+            {
+                // ゲームオーバー後は ESC によるポーズを無効化する
+                if (_isGameOver) return;
+                if (isPressed) EnterPause(); else ExitPause();
+            })
             .AddTo(this);
     }
 
@@ -96,6 +107,12 @@ public class GameManager : MonoBehaviour
     /// </summary>
     private async UniTaskVoid HandleTimeUpAsync(CancellationToken ct)
     {
+        _isGameOver = true;
+
+        // MainScene が「プレイ中」でなくなったので入力を無効化する。
+        // FreezeAll は使わない——Player のアニメーション（Intimidation）を維持するため。
+        mainSceneActivator?.DisableInput();
+
         // 1. ゲームプレイを即時停止
         player?.SetInputEnabled(false);
         enemySpawner?.StopSpawning();
@@ -122,7 +139,7 @@ public class GameManager : MonoBehaviour
         await UniTask.Delay(System.TimeSpan.FromSeconds(0.5f), cancellationToken: ct);
 
         SceneLoader.Instance?.GenericTransitionAsync(
-            config.ResultSceneName,
+            config.GetSceneName(SceneType.Result),
             fromSceneName: null,        // MainScene はアンロードしない（Spider を映すため）
             config.FadeOutDuration,
             fadeOut: null,

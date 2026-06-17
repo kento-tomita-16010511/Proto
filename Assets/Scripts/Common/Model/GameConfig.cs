@@ -48,4 +48,20 @@ public class GameConfig : ScriptableObject
 
     /// <inheritdoc cref="buttonFadeInDelay"/>
     public float ButtonFadeInDelay => buttonFadeInDelay;
+
+    /// <summary>
+    /// SceneType に対応するシーンのビルド名を返す。
+    /// シーン遷移は文字列直書きではなく SceneType + このメソッドで解決する。
+    /// </summary>
+    /// <param name="sceneType">対象シーン。</param>
+    public string GetSceneName(SceneType sceneType)
+    {
+        switch (sceneType)
+        {
+            case SceneType.Title:  return titleSceneName;
+            case SceneType.Main:   return mainSceneName;
+            case SceneType.Result: return resultSceneName;
+            default:               return null;
+        }
+    }
 }

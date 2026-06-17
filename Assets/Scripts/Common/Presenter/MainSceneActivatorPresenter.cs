@@ -1,6 +1,7 @@
 ﻿using Cysharp.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using UnityEngine;
 
 /// <summary>
@@ -8,7 +9,7 @@ using UnityEngine;
 /// TitleScene 表示中は FreezeAll で全ロジックを停止し、
 /// 遷移完了後にカウントダウン演出を経て入力を有効化する。
 /// </summary>
-public class MainSceneActivatorPresenter : MonoBehaviour
+public class MainSceneActivatorPresenter : MonoBehaviour, ISceneLifecycle
 {
     /// <summary>停止対象となるゲームオブジェクトのルート群。</summary>
     [SerializeField] private GameObject[] logicRoots;
@@ -81,20 +82,45 @@ public class MainSceneActivatorPresenter : MonoBehaviour
     }
 
     /// <summary>
-    /// SceneLoader からシーン遷移完了時に呼び出される。
-    /// CountdownPresenter が割り当てられていればカウントダウン後に入力有効化、
-    /// なければ即座に UnfreezeAll する。
+    /// タイムアップ・Result 遷移など「MainScene がゲームプレイ状態でなくなった」タイミングで
+    /// 入力のみを無効化する。FreezeAll と異なり IFreezable は触らないため、
+    /// Player のアニメーション（Intimidation 等）を維持したまま入力だけ止められる。
+    /// </summary>
+    public void DisableInput() => inputGuard?.DisableInput();
+
+    /// <summary>
+    /// シーン遷移完了時のレガシー入口（BaseScene 未配線時のフォールバック用）。
+    /// 実体は OnAfterFadeInAsync に委譲する。
     /// </summary>
     public void OnSceneTransitionComplete()
+        => OnAfterFadeInAsync(this.GetCancellationTokenOnDestroy()).Forget();
+
+    /// <summary>
+    /// フェードイン完了後に SceneLoader から BaseScene 経由で呼ばれる。ISceneLifecycle 実装。
+    /// CountdownPresenter があればカウントダウン後に入力有効化、なければ即座に UnfreezeAll する。
+    /// </summary>
+    /// <param name="ct">キャンセルトークン。</param>
+    public async UniTask OnAfterFadeInAsync(CancellationToken ct)
     {
         if (countdownPresenter != null)
         {
             UnfreezeExceptInput();
+            // カウントダウンは遷移完了後も走り続ける fire-and-forget。
+            // 引数 ct（遷移元シーンの破棄トークン）はシーンアンロードでキャンセルされ
+            // カウントダウンが途中停止するため、自分（MainScene 側）の生存トークンを使う。
             countdownPresenter.PlayAsync(this.GetCancellationTokenOnDestroy()).Forget();
         }
         else
         {
             UnfreezeAll();
         }
+        await UniTask.CompletedTask;
+    }
+
+    /// <summary>フェードアウト開始前の処理。現状は特になし。ISceneLifecycle 実装。</summary>
+    /// <param name="ct">キャンセルトークン。</param>
+    public async UniTask OnBeforeFadeOutAsync(CancellationToken ct)
+    {
+        await UniTask.CompletedTask;
     }
 }
