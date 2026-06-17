@@ -82,6 +82,13 @@ public class MainSceneActivatorPresenter : MonoBehaviour, ISceneLifecycle
     }
 
     /// <summary>
+    /// タイムアップ・Result 遷移など「MainScene がゲームプレイ状態でなくなった」タイミングで
+    /// 入力のみを無効化する。FreezeAll と異なり IFreezable は触らないため、
+    /// Player のアニメーション（Intimidation 等）を維持したまま入力だけ止められる。
+    /// </summary>
+    public void DisableInput() => inputGuard?.DisableInput();
+
+    /// <summary>
     /// シーン遷移完了時のレガシー入口（BaseScene 未配線時のフォールバック用）。
     /// 実体は OnAfterFadeInAsync に委譲する。
     /// </summary>
