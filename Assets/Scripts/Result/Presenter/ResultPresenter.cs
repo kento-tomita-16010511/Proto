@@ -43,12 +43,12 @@ public class ResultPresenter : MonoBehaviour, ISceneLifecycle
 
         // タイトルへ戻る
         view.OnReturnToTitleClicked
-            .Subscribe(_ => TransitionTo(config.TitleSceneName, ct))
+            .Subscribe(_ => TransitionTo(SceneType.Title, ct))
             .AddTo(this);
 
         // リスタート
         view.OnRestartClicked
-            .Subscribe(_ => TransitionTo(config.MainSceneName, ct))
+            .Subscribe(_ => TransitionTo(SceneType.Main, ct))
             .AddTo(this);
 
         await UniTask.CompletedTask;
@@ -66,10 +66,12 @@ public class ResultPresenter : MonoBehaviour, ISceneLifecycle
     /// <summary>
     /// ResultScene と MainScene の両方をアンロードして指定シーンへ遷移する。
     /// </summary>
-    private void TransitionTo(string toSceneName, CancellationToken ct)
+    /// <param name="toScene">遷移先シーン。</param>
+    /// <param name="ct">キャンセルトークン。</param>
+    private void TransitionTo(SceneType toScene, CancellationToken ct)
     {
         SceneLoader.Instance?.TransitionFromResultAsync(
-            toSceneName,
+            config.GetSceneName(toScene),
             config.ResultSceneName,
             config.MainSceneName,
             config.FadeOutDuration,
