@@ -47,12 +47,15 @@ public class SceneLoader : MonoBehaviour
 
             await UniTask.NextFrame(ct);
 
-            // MainScene の UI をフェードインしてカウントダウンを開始
-            var activator = FindInScene<MainSceneActivatorPresenter>(toSceneName);
+            // MainScene の UI をフェードインし、起点(BaseScene)経由でライフサイクルを呼ぶ
+            var mainScene = FindInScene<BaseScene>(toSceneName);
             var toView = FindInScene<MainSceneView>(toSceneName);
 
             if (toView != null) await toView.FadeGameUIInAsync(halfDuration, ct);
-            activator?.OnSceneTransitionComplete();
+            if (mainScene != null)
+                await mainScene.OnAfterFadeInAsync(ct);
+            else
+                FindInScene<MainSceneActivatorPresenter>(toSceneName)?.OnSceneTransitionComplete();
 
             // TitleScene をアンロード
             if (!string.IsNullOrEmpty(fromSceneName))
@@ -134,10 +137,13 @@ public class SceneLoader : MonoBehaviour
             {
                 // リスタート: カウントダウンから再開
                 await UniTask.NextFrame(ct);
-                var activator = FindInScene<MainSceneActivatorPresenter>(toSceneName);
+                var mainScene = FindInScene<BaseScene>(toSceneName);
                 var toView = FindInScene<MainSceneView>(toSceneName);
                 if (toView != null) await toView.FadeGameUIInAsync(fadeDuration * 0.5f, ct);
-                activator?.OnSceneTransitionComplete();
+                if (mainScene != null)
+                    await mainScene.OnAfterFadeInAsync(ct);
+                else
+                    FindInScene<MainSceneActivatorPresenter>(toSceneName)?.OnSceneTransitionComplete();
             }
             else
             {

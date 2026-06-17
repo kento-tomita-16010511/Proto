@@ -1,6 +1,7 @@
 ﻿using Cysharp.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using UnityEngine;
 
 /// <summary>
@@ -8,7 +9,7 @@ using UnityEngine;
 /// TitleScene 表示中は FreezeAll で全ロジックを停止し、
 /// 遷移完了後にカウントダウン演出を経て入力を有効化する。
 /// </summary>
-public class MainSceneActivatorPresenter : MonoBehaviour
+public class MainSceneActivatorPresenter : MonoBehaviour, ISceneLifecycle
 {
     /// <summary>停止対象となるゲームオブジェクトのルート群。</summary>
     [SerializeField] private GameObject[] logicRoots;
@@ -81,20 +82,35 @@ public class MainSceneActivatorPresenter : MonoBehaviour
     }
 
     /// <summary>
-    /// SceneLoader からシーン遷移完了時に呼び出される。
-    /// CountdownPresenter が割り当てられていればカウントダウン後に入力有効化、
-    /// なければ即座に UnfreezeAll する。
+    /// シーン遷移完了時のレガシー入口（BaseScene 未配線時のフォールバック用）。
+    /// 実体は OnAfterFadeInAsync に委譲する。
     /// </summary>
     public void OnSceneTransitionComplete()
+        => OnAfterFadeInAsync(this.GetCancellationTokenOnDestroy()).Forget();
+
+    /// <summary>
+    /// フェードイン完了後に SceneLoader から BaseScene 経由で呼ばれる。ISceneLifecycle 実装。
+    /// CountdownPresenter があればカウントダウン後に入力有効化、なければ即座に UnfreezeAll する。
+    /// </summary>
+    /// <param name="ct">キャンセルトークン。</param>
+    public async UniTask OnAfterFadeInAsync(CancellationToken ct)
     {
         if (countdownPresenter != null)
         {
             UnfreezeExceptInput();
-            countdownPresenter.PlayAsync(this.GetCancellationTokenOnDestroy()).Forget();
+            countdownPresenter.PlayAsync(ct).Forget();
         }
         else
         {
             UnfreezeAll();
         }
+        await UniTask.CompletedTask;
+    }
+
+    /// <summary>フェードアウト開始前の処理。現状は特になし。ISceneLifecycle 実装。</summary>
+    /// <param name="ct">キャンセルトークン。</param>
+    public async UniTask OnBeforeFadeOutAsync(CancellationToken ct)
+    {
+        await UniTask.CompletedTask;
     }
 }
