@@ -7,7 +7,7 @@ using UnityEngine;
 /// リザルト画面のボタン操作とシーン遷移を担う Presenter クラス。
 /// ResultView のストリームを購読し、SceneLoader 経由でシーンを切り替える。
 /// </summary>
-public class ResultPresenter : MonoBehaviour
+public class ResultPresenter : MonoBehaviour, ISceneLifecycle
 {
     /// <summary>リザルト画面の View。</summary>
     [SerializeField] private ResultView view;
@@ -23,7 +23,15 @@ public class ResultPresenter : MonoBehaviour
     {
         var ct = this.GetCancellationTokenOnDestroy();
         await view.FadeInAsync(config.FadeOutDuration, ct);
+        await OnAfterFadeInAsync(ct);
+    }
 
+    /// <summary>
+    /// フェードイン完了後の処理：スコア/タイムのバインドとボタン購読を行う。ISceneLifecycle 実装。
+    /// </summary>
+    /// <param name="ct">キャンセルトークン。</param>
+    public async UniTask OnAfterFadeInAsync(CancellationToken ct)
+    {
         // スコア・タイムを View にバインド
         resultState.Score
             .Subscribe(s => view.SetScore(s))
@@ -42,6 +50,17 @@ public class ResultPresenter : MonoBehaviour
         view.OnRestartClicked
             .Subscribe(_ => TransitionTo(config.MainSceneName, ct))
             .AddTo(this);
+
+        await UniTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// フェードアウト開始前の処理。現状は特になし（後処理が必要になればここに追加）。ISceneLifecycle 実装。
+    /// </summary>
+    /// <param name="ct">キャンセルトークン。</param>
+    public async UniTask OnBeforeFadeOutAsync(CancellationToken ct)
+    {
+        await UniTask.CompletedTask;
     }
 
     /// <summary>

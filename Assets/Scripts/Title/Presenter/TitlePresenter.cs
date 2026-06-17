@@ -11,7 +11,7 @@ using UnityEditor;
 /// タイトル画面の入力とシーン遷移ロジックを担う Presenter クラス。
 /// TitleScreenView のボタンイベントを購読し、SceneLoader 経由で遷移を開始する。
 /// </summary>
-public class TitlePresenter : MonoBehaviour
+public class TitlePresenter : MonoBehaviour, ISceneLifecycle
 {
     /// <summary>タイトル画面の View。</summary>
     [SerializeField] private TitleScreenView view;
@@ -68,12 +68,15 @@ public class TitlePresenter : MonoBehaviour
             })
             .AddTo(this);
 
-        PlayIntroAsync(ct).Forget();
+        OnAfterFadeInAsync(ct).Forget();
     }
 
-    /// <summary>ロゴ → ボタンの順にフェードインするイントロ演出。</summary>
+    /// <summary>
+    /// フェードイン完了後の処理：ロゴ → ボタンの順にフェードインするイントロ演出。
+    /// ISceneLifecycle 実装。BaseScene 経由、または Start から呼ばれる。
+    /// </summary>
     /// <param name="ct">キャンセルトークン。</param>
-    private async UniTask PlayIntroAsync(CancellationToken ct)
+    public async UniTask OnAfterFadeInAsync(CancellationToken ct)
     {
         Debug.Log("[TitlePresenter] PlayIntroAsync START ct.IsCancellationRequested=" + ct.IsCancellationRequested);
         try
@@ -94,13 +97,23 @@ public class TitlePresenter : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// フェードアウト開始前の処理：ボタン操作を無効化する。ISceneLifecycle 実装。
+    /// </summary>
+    /// <param name="ct">キャンセルトークン。</param>
+    public async UniTask OnBeforeFadeOutAsync(CancellationToken ct)
+    {
+        view.SetButtonInteractable(false);
+        await UniTask.CompletedTask;
+    }
+
     /// <summary>スタートボタン押下時の処理。遷移中は無視する。</summary>
     /// <param name="ct">キャンセルトークン。</param>
     private void HandleStart(CancellationToken ct)
     {
         if (titleState.IsTransitioning) return;
         titleState.SetPhase(ScenePhase.Transitioning);
-        view.SetButtonInteractable(false);
+        OnBeforeFadeOutAsync(ct).Forget();
         SceneLoader.Instance?.TransitionToMainAsync(config, view, ct).Forget();
     }
 
