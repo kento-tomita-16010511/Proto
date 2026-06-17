@@ -98,7 +98,10 @@ public class MainSceneActivatorPresenter : MonoBehaviour, ISceneLifecycle
         if (countdownPresenter != null)
         {
             UnfreezeExceptInput();
-            countdownPresenter.PlayAsync(ct).Forget();
+            // カウントダウンは遷移完了後も走り続ける fire-and-forget。
+            // 引数 ct（遷移元シーンの破棄トークン）はシーンアンロードでキャンセルされ
+            // カウントダウンが途中停止するため、自分（MainScene 側）の生存トークンを使う。
+            countdownPresenter.PlayAsync(this.GetCancellationTokenOnDestroy()).Forget();
         }
         else
         {
