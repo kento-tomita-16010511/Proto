@@ -288,7 +288,7 @@ ParticleSystem:
     startSize:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 0.12
+      scalar: 1
       minScalar: 1
       maxCurve:
         serializedVersion: 2
@@ -4908,4 +4908,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WebStunEffect
   lifetime: 2
-  moveSpeed: 10
+  moveSpeed: 4

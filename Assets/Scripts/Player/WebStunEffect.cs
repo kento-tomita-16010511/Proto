@@ -38,7 +38,7 @@ public class WebStunEffect : MonoBehaviour
         collision.quality = ParticleSystemCollisionQuality.High; // Medium 以下はコールバックが不安定
         collision.enableDynamicColliders = true; // 動的オブジェクト（NavMeshAgent 等）も検出
         collision.sendCollisionMessages = true;
-        collision.radiusScale = 5f; // 衝突判定球を粒子サイズの5倍に拡大（デフォルト1→0.13m、5倍で0.65m）
+        collision.radiusScale = 1.5f; // 衝突判定球の半径 ≈ startSize(1.0) × 0.5 × 1.5 = 0.75m（ネットの見た目サイズに合わせる）
     }
 
     /// <summary>パーティクルを再生し、寿命経過で自身を破棄する。</summary>
