@@ -15,18 +15,11 @@ public class WebStunEffect : MonoBehaviour
     [SerializeField] private float moveSpeed = 10f;
 
     private ParticleSystem _particle;
-    private ParticleSystemRenderer _psRenderer;
-    private MaterialPropertyBlock _mpb;
-    private float _elapsed;
-    private float _psLifetime;
 
     /// <summary>ParticleSystem を取得し、衝突メッセージ（OnParticleCollision）を有効化する。</summary>
     private void Awake()
     {
         _particle = GetComponent<ParticleSystem>();
-        _psRenderer = GetComponent<ParticleSystemRenderer>();
-        _mpb = new MaterialPropertyBlock();
-        _psLifetime = _particle.main.startLifetime.constant;
 
         // ParticleSystem の当たり判定でスタンを与えるため、衝突モジュールを有効化する。
         // CharacterController は Unity の標準物理コライダーとして認識されないため、
@@ -49,8 +42,9 @@ public class WebStunEffect : MonoBehaviour
     }
 
     /// <summary>
-    /// パーティクルのライフタイムに合わせて _Progress を 0→1 で更新する。
-    /// ShaderGraph の Saturate(Progress) が正しく機能するよう毎フレーム設定する。
+    /// エフェクト本体を前方へ移動させる。
+    /// （Net シェーダーは UV ベースの静的形状で、_Progress 等の時間駆動は持たないため
+    /// マテリアルプロパティの更新は不要。）
     /// </summary>
     private void Update()
     {
@@ -59,12 +53,6 @@ public class WebStunEffect : MonoBehaviour
         {
             transform.position += transform.forward * moveSpeed * Time.deltaTime;
         }
-
-        _elapsed += Time.deltaTime;
-        float progress = (_psLifetime > 0f) ? Mathf.Clamp01(_elapsed / _psLifetime) : 1f;
-        _psRenderer.GetPropertyBlock(_mpb);
-        _mpb.SetFloat("_Progress", progress);
-        _psRenderer.SetPropertyBlock(_mpb);
     }
 
     /// <summary>
