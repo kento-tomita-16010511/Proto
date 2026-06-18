@@ -4908,4 +4908,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WebStunEffect
   lifetime: 2
-  moveSpeed: 4
+  moveSpeed: 0

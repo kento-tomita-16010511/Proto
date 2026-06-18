@@ -196,7 +196,12 @@ public class Player : MonoBehaviour, IFreezable
         // 見えてしまうため、口元の Transform を基準にする。
         Vector3 origin = webMuzzle != null ? webMuzzle.position : transform.position;
         Vector3 pos = origin + fwd * webSpawnDistance;
-        Instantiate(webImpactPrefab, pos, Quaternion.LookRotation(fwd));
+
+        // プレイヤー本体を親にして生成する。これにより発射後にプレイヤーが移動・回転しても
+        // ネットが常に蜘蛛の真正面（一定のローカルオフセット）に追従する。
+        // ※前進させたい場合は world 空間の弾になり真正面から外れるため、
+        //   FX 側の WebStunEffect.moveSpeed は 0 にしている。
+        Instantiate(webImpactPrefab, pos, Quaternion.LookRotation(fwd), transform);
     }
 
     /// <summary>アクション（攻撃 / Net）を開始し、モーション完了までロックする。</summary>
