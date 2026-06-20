@@ -500,7 +500,7 @@ SkinnedMeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: f6730b960ba6c914e9141395fc93249f, type: 2}
+  - {fileID: 2100000, guid: 43cc2714db292c948be028e1af8552be, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -1146,9 +1146,9 @@ GameObject:
   - component: {fileID: 7922649801668778606}
   - component: {fileID: 7922649801668778605}
   - component: {fileID: 7922649801668778610}
-  - component: {fileID: 7922649801668778611}
   - component: {fileID: 20373751172022303}
   - component: {fileID: 2168944320526430069}
+  - component: {fileID: -2297656847259195360}
   m_Layer: 0
   m_Name: Deer_001
   m_TagString: Enemy
@@ -1224,30 +1224,6 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!114 &7922649801668778611
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7402009758359158996}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: be2f4aa750c530144bd7219a00354c98, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_WalkSpeed: 1
-  m_RunSpeed: 4
-  m_RotateSpeed: 245
-  m_Space: 1
-  m_JumpHeight: 5
-  m_VerticalID: Vert
-  m_StateID: State
-  m_LookWeight:
-    weight: 1
-    body: 0.3
-    head: 0.7
-    eyes: 1
 --- !u!114 &20373751172022303
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1270,6 +1246,7 @@ MonoBehaviour:
   detectionMask:
     serializedVersion: 2
     m_Bits: 4294967295
+  _dissolveDuration: 1.5
 --- !u!114 &2168944320526430069
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1282,10 +1259,37 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b0bb5632d029fe4a8ecefbe63cb35cb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyView
-  creatureMover: {fileID: 7922649801668778611}
   damageVFX: {fileID: 7242159958996346815}
-  visualRoot: {fileID: 0}
+  animator: {fileID: 7922649801668778610}
+  verticalParam: Vert
+  stateParam: State
+  attackParam: Attack
+  visualRoot: {fileID: 7922649801668778606}
   seEnum: 4
+  _skinnedMeshRenderer: {fileID: 7859736817349278344}
+  _agent: {fileID: -2297656847259195360}
+--- !u!195 &-2297656847259195360
+NavMeshAgent:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7402009758359158996}
+  m_Enabled: 1
+  m_AgentTypeID: 0
+  m_Radius: 0.5
+  m_Speed: 3.5
+  m_Acceleration: 8
+  avoidancePriority: 50
+  m_AngularSpeed: 120
+  m_StoppingDistance: 0
+  m_AutoTraverseOffMeshLink: 1
+  m_AutoBraking: 1
+  m_AutoRepath: 1
+  m_Height: 2
+  m_BaseOffset: 0
+  m_WalkableMask: 4294967295
+  m_ObstacleAvoidanceType: 4
 --- !u!1 &7500468941402322376
 GameObject:
   m_ObjectHideFlags: 0

@@ -271,6 +271,10 @@ PrefabInstance:
       propertyPath: m_TagString
       value: Enemy
       objectReference: {fileID: 0}
+    - target: {fileID: 4601342960021497504, guid: bb97cae325e6545489beecb87e805066, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 43cc2714db292c948be028e1af8552be, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -295,13 +299,13 @@ PrefabInstance:
       addedObject: {fileID: 7604548762191904307}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: bb97cae325e6545489beecb87e805066, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 8135011556836948755}
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: bb97cae325e6545489beecb87e805066, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 5724514783164799747}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: bb97cae325e6545489beecb87e805066, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7777599116804331435}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: bb97cae325e6545489beecb87e805066, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3971992643380906429}
   m_SourcePrefab: {fileID: 100100000, guid: bb97cae325e6545489beecb87e805066, type: 3}
 --- !u!4 &5827241139285199503 stripped
 Transform:
@@ -360,30 +364,6 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!114 &8135011556836948755
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6599273590427963445}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: be2f4aa750c530144bd7219a00354c98, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ithappy.Animals_FREE.CreatureMover
-  m_WalkSpeed: 1
-  m_RunSpeed: 4
-  m_RotateSpeed: 90
-  m_Space: 1
-  m_JumpHeight: 5
-  m_VerticalID: Vert
-  m_StateID: State
-  m_LookWeight:
-    weight: 1
-    body: 0.3
-    head: 0.7
-    eyes: 1
 --- !u!114 &5724514783164799747
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -406,6 +386,7 @@ MonoBehaviour:
   detectionMask:
     serializedVersion: 2
     m_Bits: 4294967295
+  _dissolveDuration: 1.5
 --- !u!114 &7777599116804331435
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -418,10 +399,37 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b0bb5632d029fe4a8ecefbe63cb35cb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyView
-  creatureMover: {fileID: 8135011556836948755}
   damageVFX: {fileID: 4242184647505399629}
-  visualRoot: {fileID: 0}
+  animator: {fileID: 7604548762191904307}
+  verticalParam: Vert
+  stateParam: State
+  attackParam: Attack
+  visualRoot: {fileID: 5827241139285199503}
   seEnum: 6
+  _skinnedMeshRenderer: {fileID: 7534377622433500100}
+  _agent: {fileID: 3971992643380906429}
+--- !u!195 &3971992643380906429
+NavMeshAgent:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6599273590427963445}
+  m_Enabled: 1
+  m_AgentTypeID: 0
+  m_Radius: 0.5
+  m_Speed: 3.5
+  m_Acceleration: 8
+  avoidancePriority: 50
+  m_AngularSpeed: 120
+  m_StoppingDistance: 0
+  m_AutoTraverseOffMeshLink: 1
+  m_AutoBraking: 1
+  m_AutoRepath: 1
+  m_Height: 2
+  m_BaseOffset: 0
+  m_WalkableMask: 4294967295
+  m_ObstacleAvoidanceType: 4
 --- !u!137 &7534377622433500100 stripped
 SkinnedMeshRenderer:
   m_CorrespondingSourceObject: {fileID: 4601342960021497504, guid: bb97cae325e6545489beecb87e805066, type: 3}

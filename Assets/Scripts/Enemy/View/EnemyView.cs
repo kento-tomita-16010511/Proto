@@ -1,13 +1,13 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using ithappy.Animals_FREE;
 using UnityEngine;
 using UnityEngine.AI;
 
 /// <summary>
-/// NavMeshAgent または CreatureMover を操作するエネミーの View クラス。
+/// NavMeshAgent を操作するエネミーの View クラス。
 /// 移動指示のみを受け付け、判定ロジックは持たない。
-/// NavMeshAgent が存在しない場合は CreatureMover にフォールバックする。
+/// 移動に応じたアニメーション駆動（旧 CreatureMover.AnimationHandler）を内包し、
+/// 毎フレーム NavMeshAgent の速度から Animator パラメータを平滑化して設定する。
 /// </summary>
 public class EnemyView : MonoBehaviour
 {
@@ -18,7 +18,16 @@ public class EnemyView : MonoBehaviour
     [SerializeField] private Animator animator;
     [SerializeField] private string verticalParam = "Vert";
     [SerializeField] private string stateParam = "State";
+    [SerializeField] private string attackParam = "Attack";
     private Vector3 _lastTargetPosition;
+
+    // --- ロコモーションアニメーション補間（CreatureMover.AnimationHandler から移植）---
+    /// <summary>速度変化に対するアニメーション値の追従速度（CreatureMover の k_InputFlow 相当）。</summary>
+    private const float AnimInputFlow = 4.5f;
+    /// <summary>前後左右移動量の平滑化値（verticalParam=Vert 用）。</summary>
+    private Vector2 _flowAxis;
+    /// <summary>歩行/走行ステートの平滑化値（stateParam=State 用）。</summary>
+    private float _flowState;
 
     /// <summary>
     /// スタン中に横揺れさせるビジュアル用の子 Transform。
@@ -32,6 +41,7 @@ public class EnemyView : MonoBehaviour
     /// <summary>Dissolve（崩壊）演出で溶かす対象のメッシュ。子の SkinnedMeshRenderer をアサインする。</summary>
     [SerializeField] private SkinnedMeshRenderer _skinnedMeshRenderer;
 
+    [SerializeField] private NavMeshAgent _agent;
     /// <summary>シェーダーの _DissolveAmount プロパティID（Shader.PropertyToID でキャッシュ）。</summary>
     private static readonly int DissolveAmountId = Shader.PropertyToID("_DissolveAmount");
 
@@ -80,12 +90,47 @@ public class EnemyView : MonoBehaviour
 
     /// <summary>移動を担う NavMeshAgent。未設定時は Awake で自動取得する。</summary>
 
-    private NavMeshAgent _agent;
     /// <summary>コンポーネント参照を確立する。</summary>
     private void Awake()
     {
-        if (_agent == null) _agent = GetComponent<NavMeshAgent>();
         if (animator == null) animator = GetComponent<Animator>();
+    }
+
+    /// <summary>
+    /// 毎フレーム、NavMeshAgent の速度からロコモーションアニメーションを駆動する。
+    /// CreatureMover が内部で行っていた「移動量 → Animator パラメータ」変換と平滑化を移植したもの。
+    /// </summary>
+    private void Update()
+    {
+        UpdateLocomotionAnimation(Time.deltaTime);
+    }
+
+    /// <summary>
+    /// NavMeshAgent の速度をローカル空間の前後左右成分に変換し、最大速度で正規化したうえで
+    /// CreatureMover.AnimationHandler と同じ平滑化を行って Animator に反映する。
+    /// </summary>
+    private void UpdateLocomotionAnimation(float deltaTime)
+    {
+        if (animator == null) return;
+
+        Vector3 velocity = _agent != null ? _agent.velocity : Vector3.zero;
+        float maxSpeed = (_agent != null && _agent.speed > Mathf.Epsilon) ? _agent.speed : 1f;
+
+        // ワールド速度をローカル前後左右成分へ変換し、最大速度で 0〜1 に正規化（GenAnimationAxis 相当）。
+        Vector2 axis = new Vector2(
+            Vector3.Dot(velocity, transform.right),
+            Vector3.Dot(velocity, transform.forward)) / maxSpeed;
+        axis = Vector2.ClampMagnitude(axis, 1f);
+
+        // 移動していれば走行ステート(1)、停止していれば待機ステート(0)へ寄せる。
+        float state = velocity.sqrMagnitude > 0.0001f ? 1f : 0f;
+
+        // CreatureMover.AnimationHandler.Animate と同一の平滑化ロジック。
+        animator.SetFloat(verticalParam, _flowAxis.magnitude);
+        animator.SetFloat(stateParam, Mathf.Clamp01(_flowState));
+
+        _flowAxis = Vector2.ClampMagnitude(_flowAxis + AnimInputFlow * deltaTime * (axis - _flowAxis).normalized, 1f);
+        _flowState = Mathf.Clamp01(_flowState + AnimInputFlow * deltaTime * Mathf.Sign(state - _flowState));
     }
 
     private void OnAnimatorIK()
@@ -120,9 +165,6 @@ public class EnemyView : MonoBehaviour
             _lastTargetPosition = destination;
             return;
         }
-
-        // CreatureMover が削除されたため、NavMeshAgent がない場合は移動不可
-        Debug.LogWarning($"[EnemyView:{name}] NavMeshAgent がないため移動できません。");
     }
 
     /// <summary>
@@ -166,16 +208,5 @@ public class EnemyView : MonoBehaviour
             _agent.velocity = Vector3.zero;
             return;
         }
-    }
-
-    /// <summary>
-    /// 外部の制御ロジックから計算されたアニメーションパラメータを適用します。
-    /// </summary>
-    public void SetAnimationParams(float vertical, float state)
-    {
-        if (animator == null) return;
-
-        animator.SetFloat(verticalParam, vertical);
-        animator.SetFloat(stateParam, state);
     }
 }
