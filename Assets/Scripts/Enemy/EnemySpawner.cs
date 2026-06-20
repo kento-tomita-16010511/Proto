@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System;
 using Cysharp.Threading.Tasks;
 using System.Threading;
-using System.Linq;
 
 public class EnemySpawner : MonoBehaviour, IFreezable
 {

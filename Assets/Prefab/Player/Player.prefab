@@ -120,6 +120,7 @@ Transform:
   - {fileID: 4417039849818969953}
   - {fileID: 6985888449887706376}
   - {fileID: 50807353628949010}
+  - {fileID: 1759100312739617596}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &4965305243329411387
@@ -143,9 +144,9 @@ MonoBehaviour:
   attackCollider: {fileID: 4104713110867074281}
   attackDamage: 100
   maxActionDuration: 2
-  stats: {fileID: 11400000, guid: 3ed1f463d7222d946b86d06edf607afa, type: 2}
   webImpactPrefab: {fileID: 2296039513650105455, guid: bb39edeea26f45944a56d457a2bc5b1d, type: 3}
   webSpawnDistance: 1.5
+  webMuzzle: {fileID: 1759100312739617596}
   jumpHeight: 1.5
   gravity: -7.6
 --- !u!143 &8146215280517941335
@@ -173,6 +174,37 @@ CharacterController:
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!1 &5993151910074269683
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1759100312739617596}
+  m_Layer: 0
+  m_Name: WebMuzzle
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1759100312739617596
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5993151910074269683}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: -0.3, z: 0.45}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8986510389535247278}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &9100648291644711881
 GameObject:
   m_ObjectHideFlags: 0
@@ -183,7 +215,6 @@ GameObject:
   m_Component:
   - component: {fileID: 4417039849818969953}
   - component: {fileID: 7396362115055939281}
-  - component: {fileID: 473322863441642695}
   - component: {fileID: 2121876328319641941}
   - component: {fileID: 150280068858499171}
   m_Layer: 0
@@ -259,14 +290,6 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!81 &473322863441642695
-AudioListener:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9100648291644711881}
-  m_Enabled: 1
 --- !u!114 &2121876328319641941
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -283,8 +306,7 @@ MonoBehaviour:
   m_RequiresDepthTextureOption: 2
   m_RequiresOpaqueTextureOption: 2
   m_CameraType: 0
-  m_Cameras:
-  - {fileID: 0}
+  m_Cameras: []
   m_RendererIndex: -1
   m_VolumeLayerMask:
     serializedVersion: 2

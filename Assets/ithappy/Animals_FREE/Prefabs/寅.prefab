@@ -421,6 +421,7 @@ MonoBehaviour:
   creatureMover: {fileID: 8135011556836948755}
   damageVFX: {fileID: 4242184647505399629}
   visualRoot: {fileID: 0}
+  seEnum: 6
 --- !u!137 &7534377622433500100 stripped
 SkinnedMeshRenderer:
   m_CorrespondingSourceObject: {fileID: 4601342960021497504, guid: bb97cae325e6545489beecb87e805066, type: 3}

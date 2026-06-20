@@ -28,6 +28,9 @@ public class EnemyPresenter : EnemyBasePresenter
     /// <summary>視線レイキャストで使うレイヤーマスク。デフォルトはすべてのレイヤー。</summary>
     [SerializeField] private LayerMask detectionMask = -1;
 
+    /// <summary>撃破時に Dissolve（崩壊）させる秒数。</summary>
+    [SerializeField] private float _dissolveDuration = 1.5f;
+
     private EnemyState _state;
     private Transform _player;
 
@@ -179,31 +182,41 @@ public class EnemyPresenter : EnemyBasePresenter
     }
 
     /// <summary>
-    /// 死亡時の破棄処理をオーバーライドし、砕け散る VFX を再生してから破棄する。
-    /// VFX 側（DamageVFX.DieAsync）がメッシュ非表示・コライダー無効化・3 秒後の破棄を担うため、
-    /// ここでは即破棄せず VFX 完了を待つ。VFX 未アサインの場合は即破棄にフォールバックする。
+    /// 死亡時の破棄処理をオーバーライドし、メッシュを Dissolve（崩壊）させてから破棄する。
+    /// SE 再生・コライダー無効化を行い、Dissolve 完了後に本体を破棄する。
+    /// （砕け散る VFX(DamageVFX) は呼び出さない方針。コンポーネント自体は残置）
     /// </summary>
     protected override void OnDie()
     {
         _isDead = true;
         _shakeCts?.Cancel();
         view.StopMoving();
+        view.PlayDeathSE(); // 敵種別ごとの死亡 SE を再生
 
-        // メッシュ非表示後に当たり判定が残らないよう、配下のコライダーを全て無効化する
+        // メッシュ崩壊中に当たり判定が残らないよう、配下のコライダーを全て無効化する
         // （ルートの CharacterController と StunCollider など）。
         foreach (var col in GetComponentsInChildren<Collider>(true))
             col.enabled = false;
 
-        PlayDeathVFXAsync().Forget();
+        PlayDissolveAsync(this.GetCancellationTokenOnDestroy()).Forget();
     }
 
     /// <summary>
-    /// 破壊エフェクトを再生し、再生完了（または未アサイン）後に本体を破棄する。
+    /// メッシュの Dissolve（崩壊）演出を再生する。
+    /// _DissolveAmount を 0→1 へ _dissolveDuration 秒かけて変化させ、完了後に本体を破棄する。
+    /// （将来オブジェクトプール化する際は Destroy を SetActive(false) へ変更を検討）
     /// </summary>
-    private async UniTaskVoid PlayDeathVFXAsync()
+    /// <param name="ct">キャンセルトークン。</param>
+    public async UniTask PlayDissolveAsync(CancellationToken ct)
     {
-        if (view != null && view.HasDamageVFX)
-            await view.PlayDamageVFXAsync();
+        float elapsed = 0f;
+        while (elapsed < _dissolveDuration)
+        {
+            elapsed += Time.deltaTime;
+            view.SetDissolveAmount(Mathf.Clamp01(elapsed / _dissolveDuration));
+            await UniTask.Yield(PlayerLoopTiming.Update, ct);
+        }
+        view.SetDissolveAmount(1f);
 
         if (this != null) Destroy(gameObject);
     }

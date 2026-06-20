@@ -7,94 +7,94 @@
 
 ## アーキテクチャ：MVPパターン
 
-すべての機能は Model  View  Presenter の3層に分けて実装すること。
+すべての機能は Model / View / Presenter の3層に分けて実装すること。
 
 ### 責務
 
- 層  役割  禁止事項 
----------
- Model  データ・状態の保持（ScriptableObject 推奨）  MonoBehaviour への依存、表示操作 
- View  UI表示・入力受付・イベント公開のみ  ゲームロジック、シーン遷移判断 
- Presenter  ロジックの実行・ViewとModelの仲介  `UnityEngine.UI` 型への直接参照（View経由のみ） 
+| 層 | 役割 | 禁止事項 |
+|------|------|---------|
+| Model | データ・状態の保持（ScriptableObject 推奨） | MonoBehaviour への依存、表示操作 |
+| View | UI表示・入力受付・イベント公開のみ | ゲームロジック、シーン遷移判断 |
+| Presenter | ロジックの実行・ViewとModelの仲介 | `UnityEngine.UI` 型への直接参照（View経由のみ） |
 
 ### 依存の方向（厳守）
 
 ```
 Presenter → View（メソッド呼び出し）
-View      → Presenter（UniRx Subject  Observable で通知）
+View      → Presenter（UniRx Subject / Observable で通知）
 Presenter → Model（読み書き）
 Model     ← Presenter のみ（View は Model を知らない）
 ```
 
 ### ディレクトリ構成
 
-機能ごとにフォルダを切り、その中に Model  View  Presenter をまとめること。
+機能ごとにフォルダを切り、その中に Model / View / Presenter をまとめること。
 
 ```
-AssetsScripts
-├── Title
-│   ├── Model       TitleState.cs など
-│   ├── View        TitleScreenView.cs など
-│   └── Presenter   TitlePresenter.cs など
-├── Player
-│   ├── Model       PlayerState.cs など
-│   ├── View        PlayerView.cs など
-│   └── Presenter   PlayerPresenter.cs など
-├── Enemy
-│   ├── Model
-│   ├── View
-│   └── Presenter
-└── Common          複数機能で共有するクラス（SceneLoader など）
-    ├── Model
-    ├── View
-    └── Presenter
+Assets/Scripts/
+├── Title/
+│   ├── Model/       TitleState.cs など
+│   ├── View/        TitleScreenView.cs など
+│   └── Presenter/   TitlePresenter.cs など
+├── Player/
+│   ├── Model/       PlayerState.cs など
+│   ├── View/        PlayerView.cs など
+│   └── Presenter/   PlayerPresenter.cs など
+├── Enemy/
+│   ├── Model/
+│   ├── View/
+│   └── Presenter/
+└── Common/          複数機能で共有するクラス（SceneLoader など）
+    ├── Model/
+    ├── View/
+    └── Presenter/
 ```
 
 新しい機能を追加する際は必ず対応する機能フォルダを作成し、既存フォルダに混在させないこと。
 
 ### ViewのイベントはUniRxで公開する
 
-購読（イベント通知）が必要な場合は `System.Action` ではなく UniRx の `Subject`  `ReactiveProperty` を使うこと。
+購読（イベント通知）が必要な場合は `System.Action` ではなく UniRx の `Subject` / `ReactiveProperty` を使うこと。
 
 ```csharp
 using UniRx;
 
- ✅ 正しい：ボタンは AsObservable() で購読する
+// ✅ 正しい：ボタンは AsObservable() で購読する
 startButton.onClick
     .AsObservable()
-    .Subscribe(_ = HandleStart())
+    .Subscribe(_ => HandleStart())
     .AddTo(this);
 
- ✅ View側でイベントを公開する場合は Subject を使う
-public IObservableUnit OnStartButtonClicked = _onStartButtonClicked;
-private readonly SubjectUnit _onStartButtonClicked = new SubjectUnit();
+// ✅ View側でイベントを公開する場合は Subject を使う
+public IObservable<Unit> OnStartButtonClicked => _onStartButtonClicked;
+private readonly Subject<Unit> _onStartButtonClicked = new Subject<Unit>();
 
 void Start()
 {
-     ボタンの購読も AsObservable() 経由で Subject に流す
+    // ボタンの購読も AsObservable() 経由で Subject に流す
     startButton.onClick
         .AsObservable()
-        .Subscribe(_ = _onStartButtonClicked.OnNext(Unit.Default))
+        .Subscribe(_ => _onStartButtonClicked.OnNext(Unit.Default))
         .AddTo(this);
 }
 
- Presenter は Subscribe で購読し、AddTo(this) でライフサイクルを紐付ける
+// Presenter は Subscribe で購読し、AddTo(this) でライフサイクルを紐付ける
 view.OnStartButtonClicked
-    .Subscribe(_ = HandleStart())
+    .Subscribe(_ => HandleStart())
     .AddTo(this);
 
- ✅ 値の変化を監視する場合は ReactiveProperty
-public IReadOnlyReactivePropertyScenePhase CurrentPhase = _currentPhase;
-private readonly ReactivePropertyScenePhase _currentPhase = new ReactivePropertyScenePhase(ScenePhase.Title);
+// ✅ 値の変化を監視する場合は ReactiveProperty
+public IReadOnlyReactiveProperty<ScenePhase> CurrentPhase => _currentPhase;
+private readonly ReactiveProperty<ScenePhase> _currentPhase = new ReactiveProperty<ScenePhase>(ScenePhase.Title);
 
- ❌ 禁止：AddListener を直接使う
-startButton.onClick.AddListener(() = HandleStart());
+// ❌ 禁止：AddListener を直接使う
+startButton.onClick.AddListener(() => HandleStart());
 
- ❌ 禁止：Action イベントを新規で使う
+// ❌ 禁止：Action イベントを新規で使う
 public event Action OnStartButtonClicked;
 
- ❌ 禁止：View 内でシーン遷移などのロジックを直接呼ぶ
-startButton.onClick.AsObservable().Subscribe(_ = SceneManager.LoadScene(Main));
+// ❌ 禁止：View 内でシーン遷移などのロジックを直接呼ぶ
+startButton.onClick.AsObservable().Subscribe(_ => SceneManager.LoadScene("Main"));
 ```
 
 #### UniRx のリソース管理
@@ -102,26 +102,175 @@ startButton.onClick.AsObservable().Subscribe(_ = SceneManager.LoadScene(Main));
 購読は必ず `AddTo(this)` または `CompositeDisposable` で破棄すること。
 
 ```csharp
- ✅ MonoBehaviour の場合は AddTo(this)
+// ✅ MonoBehaviour の場合は AddTo(this)
 view.OnStartButtonClicked
-    .Subscribe(_ = HandleStart())
+    .Subscribe(_ => HandleStart())
     .AddTo(this);
 
- ✅ 複数購読をまとめる場合は CompositeDisposable
+// ✅ 複数購読をまとめる場合は CompositeDisposable
 private readonly CompositeDisposable _disposables = new CompositeDisposable();
 
 void Start()
 {
     view.OnStartButtonClicked
-        .Subscribe(_ = HandleStart())
+        .Subscribe(_ => HandleStart())
         .AddTo(_disposables);
 }
 
-void OnDestroy() = _disposables.Dispose();
+void OnDestroy() => _disposables.Dispose();
 
- ❌ 禁止：AddTo  Dispose なしの購読（メモリリーク）
-view.OnStartButtonClicked.Subscribe(_ = HandleStart());
+// ❌ 禁止：AddTo / Dispose なしの購読（メモリリーク）
+view.OnStartButtonClicked.Subscribe(_ => HandleStart());
 ```
+
+---
+
+## クラス種別の使い分け
+
+### 命名と責務の対応
+
+| 命名 | 構成 | 用途 | 禁止事項 |
+|------|------|------|---------|
+| `~~Manager` | シングルトン | 単機能・アプリ全体で1つだけ存在するもの | 複数責務を持つこと |
+| `~~Utility` | staticクラス | メソッドの提供のみ。状態・データ構造を持たない | フィールド・プロパティでの状態保持 |
+| `~~Model` | ScriptableObject | データ・状態の保持 | ロジック・表示操作 |
+| `~~View` | MonoBehaviour | UI表示・入力受付 | ロジック・シーン遷移判断 |
+| `~~Presenter` | MonoBehaviour | ロジック・View/Model仲介 | UnityEngine.UI への直接参照 |
+| `~~Controller` | 禁止 | ロジックは `~~Presenter`、単機能シングルトンは `~~Manager` に寄せるため使わない | - |
+| `~~Service` | 禁止 | `~~Manager` か `~~Utility` に統一するため使わない | - |
+
+### Controller命名の禁止
+
+`~~Controller` という命名のクラスは作成禁止とする。
+MVP構成では Controller の役割が曖昧になり、Presenter と責務が重複するため。
+
+```
+やりたいこと → 使うクラス
+├── ロジック・演出の制御         → ~~Presenter
+├── 単機能・シングルトンの制御   → ~~Manager
+└── 状態を持たない処理           → ~~Utility
+```
+
+```csharp
+// ❌ 禁止：Controller命名
+public class DissolveController : MonoBehaviour { ... }
+public class PlayerController : MonoBehaviour { ... }
+
+// ✅ 正しい：ロジックはPresenterに寄せる
+public class EnemyPresenter : MonoBehaviour { /* Dissolve演出もここで制御 */ }
+public class PlayerPresenter : MonoBehaviour { /* プレイヤー制御もここ */ }
+```
+
+### Manager（シングルトン）
+
+単機能かつアプリ全体で1つだけ存在するものに使う。
+複数の責務を持ち始めたら MVP パターンへの分割を検討すること。
+
+```csharp
+// ✅ 正しい：単機能のシングルトンとして実装
+/// <summary>
+/// サウンド再生を管理するシングルトンクラス。
+/// BGM・SE の再生・停止のみを担当する。
+/// </summary>
+public class AudioManager : MonoBehaviour
+{
+    /// <summary>シングルトンインスタンス</summary>
+    public static AudioManager Instance { get; private set; }
+
+    /// <summary>BGM用AudioSource</summary>
+    [SerializeField] private AudioSource _bgmSource;
+
+    /// <summary>SE用AudioSource</summary>
+    [SerializeField] private AudioSource _seSource;
+
+    /// <summary>初期化：シングルトンの設定</summary>
+    private void Awake()
+    {
+        if (Instance != null)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+    }
+
+    /// <summary>SEを再生する</summary>
+    public void PlaySE(AudioClip clip) => _seSource.PlayOneShot(clip);
+
+    /// <summary>BGMを再生する</summary>
+    public void PlayBGM(AudioClip clip)
+    {
+        _bgmSource.clip = clip;
+        _bgmSource.Play();
+    }
+
+    /// <summary>BGMを停止する</summary>
+    public void StopBGM() => _bgmSource.Stop();
+}
+
+// Presenterから呼ぶ
+AudioManager.Instance.PlaySE(_defeatSE);
+
+// ❌ 禁止：Managerに複数の責務を持たせる
+public class GameManager : MonoBehaviour
+{
+    // サウンド・スコア・シーン遷移を1つに詰め込む → MVP化すること
+}
+```
+
+### Utility（staticクラス）
+
+メソッドの提供のみを目的とするクラス。
+フィールド・プロパティでの状態・データ構造の保持は禁止。
+データのやり取りは必ず引数と返り値で行うこと。
+
+```csharp
+// ✅ 正しい：引数・返り値でデータを受け渡す
+/// <summary>
+/// スコア計算に関するユーティリティクラス。
+/// 状態を持たず、メソッドのみを提供する。
+/// </summary>
+public static class ScoreUtility
+{
+    /// <summary>敵の種類に応じたスコアを計算して返す</summary>
+    /// <param name="enemyType">倒した敵の種類</param>
+    /// <param name="comboCount">現在のコンボ数</param>
+    /// <returns>加算するスコア</returns>
+    public static int Calculate(EnemyType enemyType, int comboCount)
+    {
+        var baseScore = enemyType == EnemyType.Boss ? 100 : 10;
+        return baseScore * comboCount;
+    }
+}
+
+// ❌ 禁止：Utilityクラスがデータ・状態を保持する
+public static class ScoreUtility
+{
+    private static int _totalScore = 0;      // ❌ 状態の保持
+    public static List<int> ScoreLog = ...;  // ❌ データ構造の保持
+
+    public static void AddScore(int amount)
+    {
+        _totalScore += amount;               // ❌ 内部状態を変更している
+    }
+}
+```
+
+### 既存のManagerクラスについて
+
+動作中の既存Managerはすぐに削除しなくてよい。
+ただし修正・機能追加の際は以下の基準で判断すること。
+
+```
+単機能のままか？
+├── Yes → Managerとして維持してOK
+└── No（複数責務が増えた）→ MVPパターンへ移行する
+```
+
+### 例外
+
+サードパーティライブラリが提供するManager・Controllerクラスは本規約の対象外とする。
+自分たちで新規作成するクラスにのみ適用する。
 
 ---
 
@@ -130,11 +279,11 @@ view.OnStartButtonClicked.Subscribe(_ = HandleStart());
 外部スクリプトから参照しないフィールドは `public` にせず `[SerializeField] private` を使うこと。
 
 ```csharp
- ✅ 正しい
+// ✅ 正しい
 [SerializeField] private Button startButton;
 [SerializeField] private CanvasGroup logoGroup;
 
- ❌ 禁止
+// ❌ 禁止
 public Button startButton;
 public CanvasGroup logoGroup;
 ```
@@ -142,8 +291,8 @@ public CanvasGroup logoGroup;
 外部参照が必要な場合は `public` または `internal` を使い、その理由をコメントに明記すること。
 
 ```csharp
- 外部の Presenter から参照するため public
-public event Action OnStartButtonClicked;
+// 外部の Presenter から参照するため public
+public IObservable<Unit> OnStartButtonClicked => _onStartButtonClicked;
 ```
 
 ---
@@ -153,41 +302,44 @@ public event Action OnStartButtonClicked;
 ### クラス
 
 ```csharp
- summary
- タイトル画面のUI表示を担当するViewクラス。
- ロジックは持たず、イベントの通知と表示操作のみを行う。
- summary
-public class TitleScreenView  MonoBehaviour
+/// <summary>
+/// タイトル画面のUI表示を担当するViewクラス。
+/// ロジックは持たず、イベントの通知と表示操作のみを行う。
+/// </summary>
+public class TitleScreenView : MonoBehaviour
 ```
 
 ### フィールド・変数
 
 ```csharp
- summaryロゴのフェードイン・アウトを制御するCanvasGroupsummary
+/// <summary>ロゴのフェードイン・アウトを制御するCanvasGroup</summary>
 [SerializeField] private CanvasGroup logoGroup;
 
- summary遷移中の連打を防ぐフラグsummary
+/// <summary>遷移中の連打を防ぐフラグ</summary>
 private bool _isTransitioning = false;
 ```
 
 ### メソッド
 
 ```csharp
- summary
- ロゴをフェードインさせる。
- summary
- param name=durationフェードにかける秒数param
-public IEnumerator FadeLogoIn(float duration)
+/// <summary>
+/// ロゴをフェードインさせる。
+/// </summary>
+/// <param name="duration">フェードにかける秒数</param>
+public async UniTask FadeLogoInAsync(float duration, CancellationToken ct)
 ```
 
 ### コメントの省略禁止
 
-Unity のコールバック（`Awake`  `Start`  `Update` など）にも必ずコメントを付けること。
+Unity のコールバック（`Awake` / `Start` など）にも必ずコメントを付けること。
 
 ```csharp
- summary初期化：ボタンイベントを登録し、初期表示を非表示にするsummary
+/// <summary>初期化：ボタンイベントを登録し、初期表示を非表示にする</summary>
 void Start()
 ```
+
+---
+
 
 ---
 
@@ -243,7 +395,7 @@ await view.FadeLogoInAsync(duration);
 `if` / `for` / `foreach` などのネストは最大2階層までとする。
 3階層以上になる場合は、早期リターン（ガード節）またはメソッド分割で解消すること。
 
-\`\`\`csharp
+```csharp
 // ❌ 禁止：深いネスト
 void HandleAttack()
 {
@@ -268,7 +420,7 @@ void HandleAttack()
 
     DealDamage();
 }
-\`\`\`
+```
 
 ### 機能ごとに必ずメソッド化する
 
@@ -276,7 +428,7 @@ void HandleAttack()
 処理が複数の役割を持つ場合は、役割ごとにメソッドに分割すること。
 目安として、1メソッドは20行以内に収めること。
 
-\`\`\`csharp
+```csharp
 // ❌ 禁止：1メソッドに複数の処理を詰め込む
 void OnEnemyDefeated()
 {
@@ -320,13 +472,13 @@ private void RemoveEnemy(Enemy enemy)
     _enemyList.Remove(enemy);
     enemy.gameObject.SetActive(false);
 }
-\`\`\`
+```
 
 ### LINQでコレクション処理をフラットに書く
 
 `foreach` + `if` のネストは LINQ に置き換えてフラットにすること。
 
-\`\`\`csharp
+```csharp
 // ❌ 禁止：foreach + if のネスト
 foreach (var enemy in _enemyList)
 {
@@ -341,7 +493,7 @@ _enemyList
     .Where(e => e.IsAlive)
     .ToList()
     .ForEach(e => e.TakeDamage(10));
-\`\`\`
+```
 
 ---
 
@@ -747,3 +899,132 @@ public class TitleScene : BaseScene
 - `SceneType` Enum にシーンを追加した場合は BuildSettings にも必ず追加すること
 - すべての非同期処理は UniTask + CancellationToken 必須
 - 購読は必ず AddTo(this) または CompositeDisposable で破棄すること
+
+---
+
+## UIコンポーネント：必ずラッパーを使うこと
+
+### 原則
+
+Unity標準のUIコンポーネントを直接使用することを禁止する。
+必ず対応するラッパークラス・Prefabを使うこと。
+これはゲーム・アプリケーション問わず、本プロジェクトを元に作るすべての
+プロダクトに適用する共通規約とする。
+
+### コンポーネント対応表
+
+| Unity標準 | ラッパー | 形式 | 主な役割 |
+|-----------|---------|------|---------|
+| `Button` | `CommonButton` | Prefab✅ | クリック音・連打防止・無効化スタイル統一 |
+| `Image` | `CommonImage` | スクリプト | フェードイン/アウト・スプライト差し替えを統一 |
+| `TextMeshProUGUI` | `CommonText` | スクリプト | フォント・カラー・サイズの統一管理 |
+| `Slider` | `CommonSlider` | Prefab✅ | HP・音量バーなど共通スタイル |
+| `CanvasGroup` | `CommonFade` | スクリプト | フェード処理を毎回書かずに済む |
+| `Animator` | `CommonAnimator` | スクリプト | パラメータ名のタイポ防止・共通操作を統一 |
+| `ScrollRect` | `CommonScrollView` | Prefab✅ | スクロール位置リセット・慣性設定を統一 |
+| `Toggle` | `CommonToggle` | Prefab✅ | ON/OFFスタイル統一 |
+| `InputField` | `CommonInputField` | Prefab✅ | バリデーション・プレースホルダー統一 |
+| `AudioSource` | `AudioManager` | シングルトン | 直接触らずManager経由に統一 |
+
+### Prefabの使い方
+
+Prefab化されているものは、Hierarchyへの配置時に
+必ずPrefabから生成すること。スクリプトから直接インスタンス化する場合も同様。
+
+```csharp
+// ✅ 正しい：PrefabをSerializeFieldで参照してInstantiate
+/// <summary>CommonButtonのPrefab参照</summary>
+[SerializeField] private CommonButton _buttonPrefab;
+
+var button = Instantiate(_buttonPrefab, _parent);
+
+// ❌ 禁止：Unity標準コンポーネントを直接生成・参照する
+var button = new GameObject().AddComponent<Button>();
+[SerializeField] private Button _button; // CommonButtonを使うこと
+```
+
+### スクリプトのみのラッパーの使い方
+
+Prefab化されていないものは、GameObjectにアタッチして使うこと。
+
+```csharp
+// ✅ 正しい：Commonラッパーをアタッチして参照する
+[SerializeField] private CommonImage _icon;
+[SerializeField] private CommonText _scoreText;
+[SerializeField] private CommonFade _fadePanel;
+[SerializeField] private CommonAnimator _playerAnimator;
+
+// ❌ 禁止：Unity標準を直接参照する
+[SerializeField] private Image _icon;
+[SerializeField] private TextMeshProUGUI _scoreText;
+[SerializeField] private CanvasGroup _fadePanel;
+[SerializeField] private Animator _playerAnimator;
+```
+
+### Commonに新しいラッパーを追加するタイミング
+
+Unity標準コンポーネントを新たに使いたくなった場合は、
+直接使わずに先にラッパーをCommonに追加してから使うこと。
+
+```
+新しいUIコンポーネントが必要になった
+        ↓
+Common にラッパークラスを作成する
+        ↓
+必要に応じてPrefab化する
+        ↓
+CLAUDE.md のコンポーネント対応表に追記する
+        ↓
+以降はラッパー経由で使う
+```
+
+---
+
+## 新規プロダクト作成時のフロー
+
+本プロジェクトを元に新しいゲーム・アプリケーションを作る際は、
+以下のフローに従って進めること。
+
+```
+STEP 1｜Commonコンポーネントの移植
+├── 以下をそのまま新プロジェクトにコピーする
+│   ├── Assets/Scripts/Common/     （BaseScene・SceneLoader・SceneType等）
+│   ├── Assets/Prefabs/Common/     （CommonButton・CommonSlider等のPrefab）
+│   └── Assets/Scripts/UI/Common/  （CommonImage・CommonText・CommonFade等）
+└── CLAUDE.md もコピーして規約を引き継ぐ
+
+STEP 2｜SceneTypeの定義
+├── Common/SceneType.cs を新プロダクト用に書き換える
+│   例: Title / Main / Result → Title / Home / Game / Setting
+└── BuildSettings にも同じシーンを追加する
+
+STEP 3｜シーンの作成（1シーンずつ）
+├── シーンファイルを作成する
+├── ~~Scene という名前のGameObjectを1つ配置する
+├── MVPの判断フローで構成を決める
+│   ├── 状態・ロジック・表示が絡む → MVP化（Model / View / Presenter）
+│   ├── 単機能・シングルトン       → ~~Manager
+│   └── 状態を持たない処理         → ~~Utility（staticクラス）
+└── ディレクトリを機能ごとに切る
+    例: Assets/Scripts/Title/Model・View・Presenter
+
+STEP 4｜UIの実装
+├── Unity標準コンポーネントは直接使わない
+├── Prefabがあるもの     → PrefabをHierarchyに配置またはInstantiate
+├── スクリプトのみのもの → GameObjectにアタッチして[SerializeField]で参照
+└── 新たに必要なUIが出たら Common に追加してから使う
+
+STEP 5｜シーン遷移の確認
+├── SceneLoader.LoadAsync(SceneType.~~, ct) 経由のみを使う
+├── 各シーンに BaseScene 継承クラスが配置されているか確認する
+└── ISceneLifecycle（OnAfterFadeInAsync / OnBeforeFadeOutAsync）が実装されているか確認する
+
+STEP 6｜規約チェック（実装完了後に必ず確認）
+├── Update / FixedUpdate が使われていないか
+├── Manager命名で複数責務を持つクラスがないか
+├── Controller / Service 命名のクラスを作っていないか
+├── Utilityクラスが状態・データ構造を持っていないか
+├── ネストが3階層以上になっていないか
+├── Unity標準UIコンポーネントが直接参照されていないか
+└── すべてのクラス・メソッド・フィールドにコメントがあるか
+```

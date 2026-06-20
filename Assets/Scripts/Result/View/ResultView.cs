@@ -21,9 +21,6 @@ public class ResultView : MonoBehaviour
     /// <summary>スコア表示テキスト。</summary>
     [SerializeField] private TextMeshProUGUI scoreText;
 
-    /// <summary>タイム表示テキスト。</summary>
-    [SerializeField] private TextMeshProUGUI timeText;
-
     /// <summary>フェードアウト用 CanvasGroup（ResultCanvas のルートに配置）。</summary>
     [SerializeField] private CanvasGroup canvasGroup;
 
@@ -53,13 +50,6 @@ public class ResultView : MonoBehaviour
     public void SetScore(int score)
     {
         if (scoreText != null) scoreText.text = "SCORE: " + score;
-    }
-
-    /// <summary>経過タイムを表示する。</summary>
-    /// <param name="time">表示するタイム（秒）。</param>
-    public void SetTime(float time)
-    {
-        if (timeText != null) timeText.text = string.Format("TIME: {0:F2}", time);
     }
 
     /// <summary>リザルト Canvas 全体をフェードアウトする。</summary>

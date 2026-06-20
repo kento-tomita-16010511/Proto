@@ -3,7 +3,6 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using UniRx;
 using UnityEngine;
-using UnityEngine.UI;
 
 /// <summary>
 /// タイトル画面の UI 表示を担当する View クラス。
@@ -18,13 +17,13 @@ public class TitleScreenView : MonoBehaviour
     [SerializeField] private CanvasGroup buttonGroup;
 
     /// <summary>ゲームスタートボタン。</summary>
-    [SerializeField] private Button startButton;
+    [SerializeField] private CommonButton startButton;
 
     /// <summary>ゲーム終了ボタン（省略可）。</summary>
-    [SerializeField] private Button quitButton;
+    [SerializeField] private CommonButton quitButton;
 
     /// <summary>設定ボタン（省略可）。</summary>
-    [SerializeField] private Button settingsButton;
+    [SerializeField] private CommonButton settingsButton;
 
     private readonly Subject<Unit> _onStartButtonClicked    = new Subject<Unit>();
     private readonly Subject<Unit> _onQuitButtonClicked     = new Subject<Unit>();
@@ -49,17 +48,17 @@ public class TitleScreenView : MonoBehaviour
     /// <summary>ボタンのクリックイベントを UniRx ストリームに変換する。</summary>
     private void Start()
     {
-        startButton.onClick.AsObservable()
+        startButton.OnClickAsObservable()
             .Subscribe(_ => _onStartButtonClicked.OnNext(Unit.Default))
             .AddTo(this);
 
         if (quitButton != null)
-            quitButton.onClick.AsObservable()
+            quitButton.OnClickAsObservable()
                 .Subscribe(_ => _onQuitButtonClicked.OnNext(Unit.Default))
                 .AddTo(this);
 
         if (settingsButton != null)
-            settingsButton.onClick.AsObservable()
+            settingsButton.OnClickAsObservable()
                 .Subscribe(_ => _onSettingsButtonClicked.OnNext(Unit.Default))
                 .AddTo(this);
     }

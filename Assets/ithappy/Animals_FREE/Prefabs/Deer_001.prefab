@@ -1285,6 +1285,7 @@ MonoBehaviour:
   creatureMover: {fileID: 7922649801668778611}
   damageVFX: {fileID: 7242159958996346815}
   visualRoot: {fileID: 0}
+  seEnum: 4
 --- !u!1 &7500468941402322376
 GameObject:
   m_ObjectHideFlags: 0

@@ -32,6 +32,8 @@ public class Player : MonoBehaviour, IFreezable
     [SerializeField] private GameObject webImpactPrefab;
     [Tooltip("エフェクトを生成する前方距離（m）")]
     [SerializeField] private float webSpawnDistance = 1.5f;
+    [Tooltip("Net の射出口（蜘蛛の口元）。未設定時はプレイヤー本体中心から射出する")]
+    [SerializeField] private Transform webMuzzle;
 
     [Header("Jump Settings")]
     [Tooltip("ジャンプの最高到達高さ（m）")]
@@ -182,13 +184,24 @@ public class Player : MonoBehaviour, IFreezable
     {
         if (webImpactPrefab == null) return;
 
-        Vector3 fwd = orientation != null ? orientation.forward : transform.forward;
+        // 射出方向はキャラクター（蜘蛛）本体の水平な正面。カメラ(orientation)は
+        // pitch を含み見下ろし時に水平成分が不安定になるため、本体 transform.forward を使う。
+        Vector3 fwd = transform.forward;
         fwd.y = 0f;
-        if (fwd.sqrMagnitude < 0.0001f) fwd = transform.forward;
+        if (fwd.sqrMagnitude < 0.0001f) fwd = orientation != null ? orientation.forward : Vector3.forward;
         fwd.Normalize();
 
-        Vector3 pos = transform.position + fwd * webSpawnDistance;
-        Instantiate(webImpactPrefab, pos, Quaternion.LookRotation(fwd));
+        // 射出口は蜘蛛の口元（webMuzzle）。未設定時のみ本体中心にフォールバックする。
+        // 本体中心はプレイヤールート（コライダー中心）で蜘蛛より高く、空中から出ているように
+        // 見えてしまうため、口元の Transform を基準にする。
+        Vector3 origin = webMuzzle != null ? webMuzzle.position : transform.position;
+        Vector3 pos = origin + fwd * webSpawnDistance;
+
+        // プレイヤー本体を親にして生成する。これにより発射後にプレイヤーが移動・回転しても
+        // ネットが常に蜘蛛の真正面（一定のローカルオフセット）に追従する。
+        // ※前進させたい場合は world 空間の弾になり真正面から外れるため、
+        //   FX 側の WebStunEffect.moveSpeed は 0 にしている。
+        Instantiate(webImpactPrefab, pos, Quaternion.LookRotation(fwd), null);
     }
 
     /// <summary>アクション（攻撃 / Net）を開始し、モーション完了までロックする。</summary>
@@ -248,7 +261,7 @@ public class Player : MonoBehaviour, IFreezable
 
     private void SpawnEffect()
     {
-        SoundManager.Instance.PlaySEWithRandomPitch("bite");
+        SoundManager.Instance.PlaySEWithRandomPitch(SEEnum.Bite);
         _activeEffects.RemoveAll(e => e == null);
         if (_activeEffects.Count >= maxEffectCount)
         {

@@ -37,10 +37,6 @@ public class ResultPresenter : MonoBehaviour, ISceneLifecycle
             .Subscribe(s => view.SetScore(s))
             .AddTo(this);
 
-        resultState.ElapsedTime
-            .Subscribe(t => view.SetTime(t))
-            .AddTo(this);
-
         // タイトルへ戻る
         view.OnReturnToTitleClicked
             .Subscribe(_ => TransitionTo(SceneType.Title, ct))
