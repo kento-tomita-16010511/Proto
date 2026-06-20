@@ -11,10 +11,14 @@ using UnityEngine.AI;
 /// </summary>
 public class EnemyView : MonoBehaviour
 {
-    /// <summary>CharacterController ベースの移動コンポーネント。NavMeshAgent がない場合に使用する。</summary>
-    [SerializeField] private CreatureMover creatureMover;
 
     [SerializeField] private DamageVFX damageVFX;
+
+    [Header("Animation Settings")]
+    [SerializeField] private Animator animator;
+    [SerializeField] private string verticalParam = "Vert";
+    [SerializeField] private string stateParam = "State";
+    private Vector3 _lastTargetPosition;
 
     /// <summary>
     /// スタン中に横揺れさせるビジュアル用の子 Transform。
@@ -24,6 +28,15 @@ public class EnemyView : MonoBehaviour
     [SerializeField] private Transform visualRoot;
 
     [SerializeField] private SEEnum seEnum;
+
+    /// <summary>Dissolve（崩壊）演出で溶かす対象のメッシュ。子の SkinnedMeshRenderer をアサインする。</summary>
+    [SerializeField] private SkinnedMeshRenderer _skinnedMeshRenderer;
+
+    /// <summary>シェーダーの _DissolveAmount プロパティID（Shader.PropertyToID でキャッシュ）。</summary>
+    private static readonly int DissolveAmountId = Shader.PropertyToID("_DissolveAmount");
+
+    /// <summary>個体ごとのマテリアルインスタンス。共有マテリアルを汚さないよう初回アクセスでキャッシュする。</summary>
+    private Material _dissolveMaterialInstance;
 
 
     /// <summary>破壊エフェクト（DamageVFX）がアサインされているか。</summary>
@@ -36,6 +49,23 @@ public class EnemyView : MonoBehaviour
     public void PlayDeathSE()
     {
         SoundManager.Instance?.PlaySE(seEnum);
+    }
+
+    /// <summary>
+    /// Dissolve 量（0=通常表示 / 1=完全消滅）をマテリアルに設定する（表示操作のみ）。
+    /// 他の敵に影響しないよう、共有マテリアルではなく個体インスタンス（renderer.material）に対して設定する。
+    /// </summary>
+    /// <param name="value">_DissolveAmount に設定する値（0〜1）。</param>
+    public void SetDissolveAmount(float value)
+    {
+        if (_skinnedMeshRenderer == null) return;
+
+        // 初回アクセスでマテリアルがインスタンス化される（共有マテリアルは書き換わらない）。
+        if (_dissolveMaterialInstance == null)
+            _dissolveMaterialInstance = _skinnedMeshRenderer.material;
+
+        if (_dissolveMaterialInstance.HasProperty(DissolveAmountId))
+            _dissolveMaterialInstance.SetFloat(DissolveAmountId, value);
     }
 
     /// <summary>
@@ -55,7 +85,15 @@ public class EnemyView : MonoBehaviour
     private void Awake()
     {
         if (_agent == null) _agent = GetComponent<NavMeshAgent>();
-        if (creatureMover == null) creatureMover = GetComponent<CreatureMover>();
+        if (animator == null) animator = GetComponent<Animator>();
+    }
+
+    private void OnAnimatorIK()
+    {
+        if (animator == null) return;
+        // CreatureMover の LookWeight ロジックと同様の設定
+        animator.SetLookAtPosition(_lastTargetPosition);
+        animator.SetLookAtWeight(1f, 0.3f, 0.7f, 1f);
     }
 
     /// <summary>エージェントの移動速度と加速度を設定する。NavMeshAgent がある場合のみ有効。</summary>
@@ -79,29 +117,12 @@ public class EnemyView : MonoBehaviour
         {
             _agent.isStopped = false;
             _agent.SetDestination(destination);
-            // NavMeshAgentが有効な場合、CreatureMoverを無効化する
-            if (creatureMover != null && creatureMover.enabled)
-            {
-                creatureMover.enabled = false;
-            }
+            _lastTargetPosition = destination;
             return;
         }
 
-        if (creatureMover != null)
-        {
-            // destination 方向を target として渡し、前進（axis.y=1）＋走りで移動させる
-            Debug.Log($"[EnemyView:{name}] CreatureMover.SetInput → dest={destination:F2}");
-            // NavMeshAgentが使用されない場合、CreatureMoverを有効化する
-            if (creatureMover != null && !creatureMover.enabled)
-            {
-                creatureMover.enabled = true;
-            }
-            creatureMover.SetInput(Vector2.up, destination, isRun: true, isJump: false);
-        }
-        else
-        {
-            Debug.LogWarning($"[EnemyView:{name}] agent も creatureMover も null。移動不可。");
-        }
+        // CreatureMover が削除されたため、NavMeshAgent がない場合は移動不可
+        Debug.LogWarning($"[EnemyView:{name}] NavMeshAgent がないため移動できません。");
     }
 
     /// <summary>
@@ -143,22 +164,18 @@ public class EnemyView : MonoBehaviour
             _agent.isStopped = true;
             _agent.ResetPath();
             _agent.velocity = Vector3.zero;
-            // NavMeshAgentが有効な場合、CreatureMoverを無効化する
-            if (creatureMover != null && creatureMover.enabled)
-            {
-                creatureMover.enabled = false;
-            }
             return;
         }
+    }
 
-        if (creatureMover != null)
-        {
-            creatureMover.SetInput(Vector2.zero, transform.position, isRun: false, isJump: false);
-        }
-        // NavMeshAgentが使用されない場合、CreatureMoverを有効化する
-        if (creatureMover != null && !creatureMover.enabled)
-        {
-            creatureMover.enabled = true;
-        }
+    /// <summary>
+    /// 外部の制御ロジックから計算されたアニメーションパラメータを適用します。
+    /// </summary>
+    public void SetAnimationParams(float vertical, float state)
+    {
+        if (animator == null) return;
+
+        animator.SetFloat(verticalParam, vertical);
+        animator.SetFloat(stateParam, state);
     }
 }
