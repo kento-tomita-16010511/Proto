@@ -1342,7 +1342,7 @@ MonoBehaviour:
   _skinnedMeshRenderer: {fileID: 4349140359847211452}
   _agent: {fileID: -170501227654633032}
   _particleSystem: {fileID: 8735418963941585710}
-  _characterController: {fileID: 0}
+  _characterController: {fileID: 8881504610387854123}
 --- !u!195 &-170501227654633032
 NavMeshAgent:
   m_ObjectHideFlags: 0

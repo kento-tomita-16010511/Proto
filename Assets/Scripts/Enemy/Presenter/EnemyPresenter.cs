@@ -189,6 +189,7 @@ public class EnemyPresenter : EnemyBasePresenter
         _shakeCts?.Cancel();
         view.StopMoving();
         view.PlayDeathSE(); // 敵種別ごとの死亡 SE を再生
+        view.PlayDamageVFXAsync().Forget(); // 砕け散る VFX は再生するが、破棄はしない
 
         // メッシュ崩壊中に当たり判定が残らないよう、配下のコライダーを全て無効化する
         // （ルートの CharacterController と StunCollider など）。
