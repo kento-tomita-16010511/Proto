@@ -2,6 +2,7 @@ using Cysharp.Threading.Tasks;
 using System.Threading;
 using UnityEngine;
 using UniRx;
+using unityroom.Api;
 
 /// <summary>
 /// メインゲームのライフサイクルを管理するクラス。
@@ -37,6 +38,15 @@ public class GameManager : MonoBehaviour
     /// Result 画面中に設定ポップアップが開くのを防ぐ。
     /// </summary>
     private bool _isGameOver;
+
+    /// <summary>
+    /// unityroom へスコアを送信済みかどうか。
+    /// SendScore の二重送信（ランキング画面のフリーズ原因）を防ぐためのガードフラグ。
+    /// </summary>
+    private bool _isScoreSent;
+
+    /// <summary>unityroom のスコアボードNo。</summary>
+    private const int UnityroomBoardNo = 1;
 
     private void Start()
     {
@@ -103,6 +113,21 @@ public class GameManager : MonoBehaviour
     }
 
     /// <summary>
+    /// unityroom のスコアボードへスコアを送信する。
+    /// _isScoreSent ガードにより、ゲーム終了時に必ず1回だけ送信される。
+    /// エディタ実行時は実際には送信されず、コンソールにログが出るのみ（ライブラリ仕様）。
+    /// </summary>
+    /// <param name="score">送信するスコア（int を float にキャストして渡す）</param>
+    private void SendScoreToUnityroom(int score)
+    {
+        if (_isScoreSent) return;
+        if (UnityroomApiClient.Instance == null) return;
+
+        _isScoreSent = true;
+        UnityroomApiClient.Instance.SendScore(UnityroomBoardNo, (float)score, ScoreboardWriteMode.HighScoreDesc);
+    }
+
+    /// <summary>
     /// タイムアップ後の演出と ResultScene への遷移を非同期で実行する。
     /// </summary>
     private async UniTaskVoid HandleTimeUpAsync(CancellationToken ct)
@@ -118,11 +143,15 @@ public class GameManager : MonoBehaviour
         enemySpawner?.StopSpawning();
 
         // 2. スコアと経過タイムを ResultState に書き込む
+        var finalScore = ScoreManager.Instance?.Score ?? 0;
         if (resultState != null)
         {
-            resultState.SetScore(ScoreManager.Instance?.Score ?? 0);
+            resultState.SetScore(finalScore);
             resultState.SetElapsedTime(timerController?.ElapsedTime ?? 0f);
         }
+
+        // 2-1. unityroom のスコアボードへスコアを送信する（ゲーム終了時に1回だけ）
+        SendScoreToUnityroom(finalScore);
 
         // 3. カメラを Player から切り離してリザルト用位置へ移動
         if (_mainCamera != null && resultCameraAnchor != null)

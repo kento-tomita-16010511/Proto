@@ -41,8 +41,18 @@ public class Player : MonoBehaviour, IFreezable
     [Tooltip("重力加速度（負の値）")]
     [SerializeField] private float gravity = -20f;
 
+    [Header("Grapple / Momentum Settings")]
+    [Tooltip("グラップリングフック。右クリックで発射し、外れた後の速度（慣性）は Player が保持する")]
+    [SerializeField] private GrappleController grapple;
+    [Tooltip("空中での方向転換のしやすさ（加速度）。慣性を残しつつ少しだけ操作を効かせる")]
+    [SerializeField] private float airControlAccel = 18f;
+    [Tooltip("着地時、通常速度を超える慣性が残っている間の減速（スライド感）。大きいほど早く止まる")]
+    [SerializeField] private float slideFriction = 12f;
+
     private CharacterController _controller;
-    private float _verticalVelocity;
+
+    /// <summary>ワールド空間のフル速度ベクトル（m/s）。グラップルの慣性をここに保持して持ち越す。</summary>
+    private Vector3 _velocity;
 
     /// <summary>Freeze 中かどうか。EveryUpdate ストリームをスキップさせるフラグ。</summary>
     private bool _frozen;
@@ -77,7 +87,7 @@ public class Player : MonoBehaviour, IFreezable
     public void PlayIntimidation()
     {
         _frozen = true;
-        _verticalVelocity = -2f; // 接地スナップ値でリセット（重力蓄積をクリア）
+        _velocity = Vector3.down * 2f; // 接地スナップ値でリセット（速度・重力蓄積をクリア）
         if (_animator != null)
         {
             _animator.SetBool("IsMoving", false);
@@ -113,66 +123,107 @@ public class Player : MonoBehaviour, IFreezable
         _animator?.SetBool("IsMoving", isMoving);
 
         bool attack = InputManager.Instance?.AttackPressedThisFrame ?? false;
-        bool net = InputManager.Instance?.NetPressedThisFrame ?? false;
 
-        // 攻撃 / Net モーション中は新たなアクションを受け付けない
+        // 攻撃モーション中は新たなアクションを受け付けない
         if (!_actionLocked && attack && effectPrefab != null)
         {
             BeginAction();
             SpawnEffect();
             _animator?.SetTrigger("AttackTrigger");
         }
-        else if (!_actionLocked && net)
+
+        // --- グラップル発射 / 切断（右クリック）---------------------------------
+        bool grapplePressed = InputManager.Instance?.GrapplePressedThisFrame ?? false;
+        bool grappleHeld = InputManager.Instance?.GrappleHeld ?? false;
+        if (grapple != null)
         {
-            BeginAction();
-            _animator?.SetTrigger("Net");
-            SpawnWebImpact();
+            if (grapplePressed) grapple.TryAttach();
+            if (!grappleHeld) grapple.Detach();
+        }
+        bool grappling = grapple != null && grapple.IsAttached;
+
+        // --- 速度の更新（グラップル中 / 接地 / 空中 の 3 状態）------------------
+        float dt = Time.deltaTime;
+        if (grappling)
+        {
+            // グラップルが速度を全面的に駆動する。外れた瞬間の速度が _velocity に残り慣性になる。
+            _velocity = grapple.ComputeVelocity(_velocity, input, dt);
+        }
+        else
+        {
+            UpdateGroundedOrAirborne(input, isMoving, dt);
         }
 
-        // 水平移動量（カメラ基準）を算出する
-        Vector3 horizontal = Vector3.zero;
+        // 1 回の CharacterController.Move で適用する。
+        // transform.Translate と Move を混在させると衝突解決（overlap recovery）と競合するため Move に統一。
+        if (_controller != null)
+            _controller.Move(_velocity * dt);
+        else
+            transform.Translate(_velocity * dt, Space.World);
+    }
+
+    /// <summary>
+    /// グラップルしていない時の速度更新。接地中は機敏な直接制御、空中はグラップル等の慣性を保持しつつ
+    /// 弱いエアコントロールで方向だけ調整する。これにより「スイング→リリース→大ジャンプ／スライド」が繋がる。
+    /// </summary>
+    private void UpdateGroundedOrAirborne(Vector3 input, bool isMoving, float dt)
+    {
+        if (_controller == null) return;
+
+        bool grounded = _controller.isGrounded;
+
+        // 垂直（重力・ジャンプ）
+        if (grounded && _velocity.y < 0f)
+            _velocity.y = -2f; // 接地を安定させる軽い押し付け
+
+        bool jump = InputManager.Instance?.JumpPressedThisFrame ?? false;
+        if (grounded && jump)
+        {
+            _animator?.SetTrigger("Jump");
+            // v = sqrt(2 * g * h)。グラップルの水平慣性は維持したまま上向き初速だけ与える＝大ジャンプ。
+            _velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            grounded = false; // この後の水平処理を空中側（慣性保持）に倒す
+        }
+        _velocity.y += gravity * dt;
+
+        // 入力から望む水平方向（カメラ基準）
+        Vector3 wish = Vector3.zero;
         if (isMoving)
         {
             Vector3 forward = orientation.forward;
             Vector3 right = orientation.right;
             forward.y = 0f; right.y = 0f;
             forward.Normalize(); right.Normalize();
-            horizontal = (forward * input.z + right * input.x).normalized * speed;
+            wish = (forward * input.z + right * input.x).normalized * speed;
         }
 
-        // ジャンプ / 重力で垂直速度を更新する
-        UpdateVerticalVelocity();
+        Vector3 horiz = new Vector3(_velocity.x, 0f, _velocity.z);
+        float curSpeed = horiz.magnitude;
 
-        // 水平 + 垂直を 1 回の CharacterController.Move で適用する。
-        // transform.Translate と Move を混在させると CharacterController の衝突解決
-        // （overlap recovery）と競合して移動できなくなるため、必ず Move に統一する。
-        Vector3 velocity = horizontal + Vector3.up * _verticalVelocity;
-        if (_controller != null)
-            _controller.Move(velocity * Time.deltaTime);
-        else
-            transform.Translate(horizontal * Time.deltaTime, Space.World);
-    }
-
-    /// <summary>
-    /// 接地判定に基づきジャンプ入力を処理し、重力で垂直速度（_verticalVelocity）を更新する。
-    /// 実際の移動適用（Move）は Tick 側で水平移動とまとめて 1 回だけ行う。
-    /// </summary>
-    private void UpdateVerticalVelocity()
-    {
-        if (_controller == null) return;
-
-        bool grounded = _controller.isGrounded;
-        if (grounded && _verticalVelocity < 0f)
-            _verticalVelocity = -2f; // 接地を安定させるための軽い押し付け
-
-        bool jump = InputManager.Instance?.JumpPressedThisFrame ?? false;
-        if (grounded && jump)
+        if (grounded)
         {
-            // v = sqrt(2 * g * h) で目標高さに到達する初速を求める
-            _verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            if (curSpeed > speed + 0.1f)
+            {
+                // 通常速度を超える慣性が残っている → スライドとして摩擦で減速しつつ入力で寄せる
+                horiz = Vector3.MoveTowards(horiz, wish, slideFriction * dt);
+            }
+            else
+            {
+                // 通常の機敏な接地移動：水平を入力で直接上書き
+                horiz = wish;
+            }
+        }
+        else if (isMoving)
+        {
+            // 空中：慣性を消さずに、望む方向へ弱く加速（エアコントロール）。
+            // 現在速度か通常速度の大きい方を上限にして、慣性での高速を削らない。
+            float cap = Mathf.Max(curSpeed, speed);
+            horiz += wish.normalized * airControlAccel * dt;
+            horiz = Vector3.ClampMagnitude(horiz, cap);
         }
 
-        _verticalVelocity += gravity * Time.deltaTime;
+        _velocity.x = horiz.x;
+        _velocity.z = horiz.z;
     }
 
     /// <summary>

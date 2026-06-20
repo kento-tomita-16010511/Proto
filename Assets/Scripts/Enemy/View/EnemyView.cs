@@ -11,9 +11,6 @@ using UnityEngine.AI;
 /// </summary>
 public class EnemyView : MonoBehaviour
 {
-
-    [SerializeField] private DamageVFX damageVFX;
-
     [Header("Animation Settings")]
     [SerializeField] private Animator animator;
     [SerializeField] private string verticalParam = "Vert";
@@ -29,6 +26,12 @@ public class EnemyView : MonoBehaviour
     /// <summary>歩行/走行ステートの平滑化値（stateParam=State 用）。</summary>
     private float _flowState;
 
+    /// <summary>IK 注視に使う、平滑化された注視先。離散的に飛ぶ _lastTargetPosition を滑らかに追従する。</summary>
+    private Vector3 _smoothedLookPosition;
+    private bool _hasLookPosition;
+    /// <summary>注視先の追従速度（1/秒）。大きいほど素早く向き直る。</summary>
+    private const float LookFollowSpeed = 5f;
+
     /// <summary>
     /// スタン中に横揺れさせるビジュアル用の子 Transform。
     /// NavMeshAgent はルート Transform を制御するため、揺れはこの子で行う。
@@ -42,15 +45,16 @@ public class EnemyView : MonoBehaviour
     [SerializeField] private SkinnedMeshRenderer _skinnedMeshRenderer;
 
     [SerializeField] private NavMeshAgent _agent;
+
+    [SerializeField] private　ParticleSystem _particleSystem;
+
+    [SerializeField] private CharacterController _characterController;
+
     /// <summary>シェーダーの _DissolveAmount プロパティID（Shader.PropertyToID でキャッシュ）。</summary>
     private static readonly int DissolveAmountId = Shader.PropertyToID("_DissolveAmount");
 
     /// <summary>個体ごとのマテリアルインスタンス。共有マテリアルを汚さないよう初回アクセスでキャッシュする。</summary>
     private Material _dissolveMaterialInstance;
-
-
-    /// <summary>破壊エフェクト（DamageVFX）がアサインされているか。</summary>
-    public bool HasDamageVFX => damageVFX != null;
 
     /// <summary>
     /// 死亡時の SE（敵種別ごとに seEnum で設定）を再生する。
@@ -84,8 +88,11 @@ public class EnemyView : MonoBehaviour
     /// </summary>
     public UniTask PlayDamageVFXAsync()
     {
-        if (damageVFX == null) return UniTask.CompletedTask;
-        return damageVFX.DieAsync();
+        _characterController.enabled = false;
+        if (_particleSystem == null) return UniTask.CompletedTask;
+        _particleSystem.gameObject.SetActive(true);
+        _particleSystem.Play();
+        return UniTask.CompletedTask;
     }
 
     /// <summary>移動を担う NavMeshAgent。未設定時は Awake で自動取得する。</summary>
@@ -93,6 +100,7 @@ public class EnemyView : MonoBehaviour
     /// <summary>コンポーネント参照を確立する。</summary>
     private void Awake()
     {
+        _particleSystem.gameObject.SetActive(false);
         if (animator == null) animator = GetComponent<Animator>();
     }
 
@@ -103,6 +111,14 @@ public class EnemyView : MonoBehaviour
     private void Update()
     {
         UpdateLocomotionAnimation(Time.deltaTime);
+
+        // 離散的に更新される注視先（逃走先）を毎フレーム滑らかに追従させ、IK のビクつきを防ぐ。
+        if (_hasLookPosition)
+        {
+            _smoothedLookPosition = Vector3.Lerp(
+                _smoothedLookPosition, _lastTargetPosition,
+                1f - Mathf.Exp(-LookFollowSpeed * Time.deltaTime));
+        }
     }
 
     /// <summary>
@@ -125,19 +141,20 @@ public class EnemyView : MonoBehaviour
         // 移動していれば走行ステート(1)、停止していれば待機ステート(0)へ寄せる。
         float state = velocity.sqrMagnitude > 0.0001f ? 1f : 0f;
 
-        // CreatureMover.AnimationHandler.Animate と同一の平滑化ロジック。
+        // 目標値へ一定速度で追従しつつ、到達したら正確に停止する（オーバーシュート＝振動を防ぐ）。
+        // CreatureMover の normalized/Sign による固定ステップは目標付近で永久に振動するため MoveTowards に変更。
+        _flowAxis = Vector2.MoveTowards(_flowAxis, axis, AnimInputFlow * deltaTime);
+        _flowState = Mathf.MoveTowards(_flowState, state, AnimInputFlow * deltaTime);
+
         animator.SetFloat(verticalParam, _flowAxis.magnitude);
         animator.SetFloat(stateParam, Mathf.Clamp01(_flowState));
-
-        _flowAxis = Vector2.ClampMagnitude(_flowAxis + AnimInputFlow * deltaTime * (axis - _flowAxis).normalized, 1f);
-        _flowState = Mathf.Clamp01(_flowState + AnimInputFlow * deltaTime * Mathf.Sign(state - _flowState));
     }
 
     private void OnAnimatorIK()
     {
-        if (animator == null) return;
-        // CreatureMover の LookWeight ロジックと同様の設定
-        animator.SetLookAtPosition(_lastTargetPosition);
+        if (animator == null || !_hasLookPosition) return;
+        // CreatureMover の LookWeight ロジックと同様の設定（注視先は平滑化済みの値を使う）
+        animator.SetLookAtPosition(_smoothedLookPosition);
         animator.SetLookAtWeight(1f, 0.3f, 0.7f, 1f);
     }
 
@@ -163,6 +180,12 @@ public class EnemyView : MonoBehaviour
             _agent.isStopped = false;
             _agent.SetDestination(destination);
             _lastTargetPosition = destination;
+            // 初回はスナップ、以降は Update で滑らかに追従する。
+            if (!_hasLookPosition)
+            {
+                _smoothedLookPosition = destination;
+                _hasLookPosition = true;
+            }
             return;
         }
     }
