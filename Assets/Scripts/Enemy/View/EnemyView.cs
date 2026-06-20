@@ -23,8 +23,20 @@ public class EnemyView : MonoBehaviour
     /// </summary>
     [SerializeField] private Transform visualRoot;
 
+    [SerializeField] private SEEnum seEnum;
+
+
     /// <summary>破壊エフェクト（DamageVFX）がアサインされているか。</summary>
     public bool HasDamageVFX => damageVFX != null;
+
+    /// <summary>
+    /// 死亡時の SE（敵種別ごとに seEnum で設定）を再生する。
+    /// SoundManager 未初期化時は何もしない。
+    /// </summary>
+    public void PlayDeathSE()
+    {
+        SoundManager.Instance?.PlaySE(seEnum);
+    }
 
     /// <summary>
     /// 破壊エフェクト（砕け散る VFX）を再生する。
@@ -67,6 +79,11 @@ public class EnemyView : MonoBehaviour
         {
             _agent.isStopped = false;
             _agent.SetDestination(destination);
+            // NavMeshAgentが有効な場合、CreatureMoverを無効化する
+            if (creatureMover != null && creatureMover.enabled)
+            {
+                creatureMover.enabled = false;
+            }
             return;
         }
 
@@ -74,6 +91,11 @@ public class EnemyView : MonoBehaviour
         {
             // destination 方向を target として渡し、前進（axis.y=1）＋走りで移動させる
             Debug.Log($"[EnemyView:{name}] CreatureMover.SetInput → dest={destination:F2}");
+            // NavMeshAgentが使用されない場合、CreatureMoverを有効化する
+            if (creatureMover != null && !creatureMover.enabled)
+            {
+                creatureMover.enabled = true;
+            }
             creatureMover.SetInput(Vector2.up, destination, isRun: true, isJump: false);
         }
         else
@@ -121,12 +143,22 @@ public class EnemyView : MonoBehaviour
             _agent.isStopped = true;
             _agent.ResetPath();
             _agent.velocity = Vector3.zero;
+            // NavMeshAgentが有効な場合、CreatureMoverを無効化する
+            if (creatureMover != null && creatureMover.enabled)
+            {
+                creatureMover.enabled = false;
+            }
             return;
         }
 
         if (creatureMover != null)
         {
             creatureMover.SetInput(Vector2.zero, transform.position, isRun: false, isJump: false);
+        }
+        // NavMeshAgentが使用されない場合、CreatureMoverを有効化する
+        if (creatureMover != null && !creatureMover.enabled)
+        {
+            creatureMover.enabled = true;
         }
     }
 }

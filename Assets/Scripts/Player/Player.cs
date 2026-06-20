@@ -201,7 +201,7 @@ public class Player : MonoBehaviour, IFreezable
         // ネットが常に蜘蛛の真正面（一定のローカルオフセット）に追従する。
         // ※前進させたい場合は world 空間の弾になり真正面から外れるため、
         //   FX 側の WebStunEffect.moveSpeed は 0 にしている。
-        Instantiate(webImpactPrefab, pos, Quaternion.LookRotation(fwd), transform);
+        Instantiate(webImpactPrefab, pos, Quaternion.LookRotation(fwd), null);
     }
 
     /// <summary>アクション（攻撃 / Net）を開始し、モーション完了までロックする。</summary>
@@ -261,7 +261,7 @@ public class Player : MonoBehaviour, IFreezable
 
     private void SpawnEffect()
     {
-        SoundManager.Instance.PlaySEWithRandomPitch("bite");
+        SoundManager.Instance.PlaySEWithRandomPitch(SEEnum.Bite);
         _activeEffects.RemoveAll(e => e == null);
         if (_activeEffects.Count >= maxEffectCount)
         {

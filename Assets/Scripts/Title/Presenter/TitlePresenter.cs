@@ -82,10 +82,9 @@ public class TitlePresenter : MonoBehaviour, ISceneLifecycle
         try
         {
             await view.FadeLogoInAsync(config.FadeInDuration, ct);
-            Debug.Log("[TitlePresenter] FadeLogoIn DONE");
             await UniTask.Delay(TimeSpan.FromSeconds(config.ButtonFadeInDelay), cancellationToken: ct);
             await view.FadeButtonsInAsync(config.FadeInDuration, ct);
-            Debug.Log("[TitlePresenter] PlayIntroAsync COMPLETE");
+            SoundManager.Instance.PlayBGM(BGMEnum.TITLE);
         }
         catch (System.OperationCanceledException)
         {

@@ -26,7 +26,7 @@ public class ScoreManager : MonoBehaviour
     public void AddScore(int amount)
     {
         Score += amount;
-        SoundManager.Instance.PlaySE("score");
+        SoundManager.Instance.PlaySE(SEEnum.Score);
         if (_scoreText != null)
             _scoreText.text = Score.ToString();
     }

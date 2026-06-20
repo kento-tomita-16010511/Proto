@@ -9,9 +9,16 @@ using System.Linq;
 public class SoundManager : MonoBehaviour
 {
     [Serializable]
-    public class SoundData
+    public class BGMSoundData
     {
-        public string key;
+        public BGMEnum bgmEnum;
+        public AudioClip clip;
+    }
+
+    [Serializable]
+    public class SESoundData
+    {
+        public SEEnum seEnum;
         public AudioClip clip;
     }
 
@@ -22,20 +29,20 @@ public class SoundManager : MonoBehaviour
     [SerializeField] private AudioSource _seSource;
 
     [Header("Sound Lists")]
-    [SerializeField] private List<SoundData> _bgmList = new List<SoundData>();
-    [SerializeField] private List<SoundData> _seList = new List<SoundData>();
+    [SerializeField] private List<BGMSoundData> _bgmList = new List<BGMSoundData>();
+    [SerializeField] private List<SESoundData> _seList = new List<SESoundData>();
 
-    private Dictionary<string, AudioClip> _bgmDictionary = new Dictionary<string, AudioClip>();
-    private Dictionary<string, AudioClip> _seDictionary = new Dictionary<string, AudioClip>();
+    private Dictionary<BGMEnum, AudioClip> _bgmDictionary = new Dictionary<BGMEnum, AudioClip>();
+    private Dictionary<SEEnum, AudioClip> _seDictionary = new Dictionary<SEEnum, AudioClip>();
 
     private const string BgmVolumeKey = "BGMVolume";
-    private const string SeVolumeKey  = "SEVolume";
+    private const string SeVolumeKey = "SEVolume";
 
     /// <summary>現在の BGM 音量（0〜1）。</summary>
     public float BGMVolume => _bgmSource != null ? _bgmSource.volume : 1f;
 
     /// <summary>現在の SE 音量（0〜1）。</summary>
-    public float SEVolume  => _seSource  != null ? _seSource.volume  : 1f;
+    public float SEVolume => _seSource != null ? _seSource.volume : 1f;
 
     private void Awake()
     {
@@ -57,7 +64,7 @@ public class SoundManager : MonoBehaviour
     private void LoadVolumes()
     {
         if (_bgmSource != null) _bgmSource.volume = PlayerPrefs.GetFloat(BgmVolumeKey, 1f);
-        if (_seSource  != null) _seSource.volume  = PlayerPrefs.GetFloat(SeVolumeKey,  1f);
+        if (_seSource != null) _seSource.volume = PlayerPrefs.GetFloat(SeVolumeKey, 1f);
     }
 
     /// <summary>BGM 音量を設定して PlayerPrefs に保存する。</summary>
@@ -88,9 +95,15 @@ public class SoundManager : MonoBehaviour
     }
 
     /// <summary>有効なエントリのみを辞書化する（キー重複は後勝ち）。</summary>
-    private static Dictionary<string, AudioClip> BuildClipDictionary(List<SoundData> list) =>
-        list.Where(d => !string.IsNullOrEmpty(d.key) && d.clip != null)
-            .GroupBy(d => d.key)
+    private static Dictionary<BGMEnum, AudioClip> BuildClipDictionary(List<BGMSoundData> list) =>
+        list.Where(d => d.clip != null)
+            .GroupBy(d => d.bgmEnum)
+            .ToDictionary(g => g.Key, g => g.Last().clip);
+
+    /// <summary>有効なエントリのみを辞書化する（キー重複は後勝ち）。</summary>
+    private static Dictionary<SEEnum, AudioClip> BuildClipDictionary(List<SESoundData> list) =>
+        list.Where(d => d.clip != null)
+            .GroupBy(d => d.seEnum)
             .ToDictionary(g => g.Key, g => g.Last().clip);
 
     /// <summary>
@@ -98,7 +111,7 @@ public class SoundManager : MonoBehaviour
     /// </summary>
     /// <param name="key">登録されたBGMのキー</param>
     /// <param name="loop">ループ再生するかどうか</param>
-    public void PlayBGM(string key, bool loop = true)
+    public void PlayBGM(BGMEnum key, bool loop = true)
     {
         if (_bgmDictionary.TryGetValue(key, out AudioClip clip))
         {
@@ -128,7 +141,7 @@ public class SoundManager : MonoBehaviour
     /// </summary>
     /// <param name="key">登録されたSEのキー</param>
     /// <param name="volume">音量倍率 (0.0 - 1.0)</param>
-    public void PlaySE(string key, float volume = 1.0f)
+    public void PlaySE(SEEnum key, float volume = 1.0f)
     {
         if (_seDictionary.TryGetValue(key, out AudioClip clip))
         {
@@ -145,7 +158,7 @@ public class SoundManager : MonoBehaviour
     /// </summary>
     /// <param name="key">音源のキー（例: "かみつき"）</param>
     /// <param name="pitchRandomRange">ランダムにずらす幅（0.05なら 0.95 〜 1.05 の間で変化）</param>
-    public void PlaySEWithRandomPitch(string key, float pitchRandomRange = 0.05f)
+    public void PlaySEWithRandomPitch(SEEnum key, float pitchRandomRange = 0.05f)
     {
         if (_seDictionary.TryGetValue(key, out AudioClip clip))
         {

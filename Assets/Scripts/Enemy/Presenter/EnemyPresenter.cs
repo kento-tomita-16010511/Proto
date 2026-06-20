@@ -188,6 +188,7 @@ public class EnemyPresenter : EnemyBasePresenter
         _isDead = true;
         _shakeCts?.Cancel();
         view.StopMoving();
+        view.PlayDeathSE(); // 敵種別ごとの死亡 SE を再生
 
         // メッシュ非表示後に当たり判定が残らないよう、配下のコライダーを全て無効化する
         // （ルートの CharacterController と StunCollider など）。
