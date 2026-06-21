@@ -79,7 +79,7 @@ public class EnemySpawner : MonoBehaviour, IFreezable
                     await UniTask.Delay(100, cancellationToken: cancellationToken);
                     continue;
                 }
-                _activeEnemies.RemoveAll(enemy => enemy == null);
+                _activeEnemies.Clear();
                 if (_activeEnemies.Count < maxEnemies) SpawnEnemy();
                 int delayMs = Mathf.RoundToInt(Mathf.Max(0, spawnInterval) * 1000);
                 await UniTask.Delay(delayMs, cancellationToken: cancellationToken);

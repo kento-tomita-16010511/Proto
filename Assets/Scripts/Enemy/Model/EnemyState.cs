@@ -29,6 +29,9 @@ public class EnemyState : ScriptableObject
     /// <summary>逃走時の加速度（m/s²）。大きいほど素早く最高速に達する。</summary>
     [SerializeField] private float fleeAcceleration = 20f;
 
+    /// <summary>逃走時の旋回速度（度/秒）。進行方向へ向き直る速さ。大きいほど素早く転回する。</summary>
+    [SerializeField] private float fleeTurnSpeed = 540f;
+
     /// <summary>逃走先を再計算する間隔（秒）。毎フレーム再計算を防ぐ。</summary>
     [SerializeField] private float fleeUpdateInterval = 0.3f;
 
@@ -71,6 +74,9 @@ public class EnemyState : ScriptableObject
 
     /// <summary>逃走加速度。</summary>
     public float FleeAcceleration => fleeAcceleration;
+
+    /// <summary>逃走時の旋回速度（度/秒）。</summary>
+    public float FleeTurnSpeed => fleeTurnSpeed;
 
     /// <summary>逃走先の再計算間隔（秒）。</summary>
     public float FleeUpdateInterval => fleeUpdateInterval;

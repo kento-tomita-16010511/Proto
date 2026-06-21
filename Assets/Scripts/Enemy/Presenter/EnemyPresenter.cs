@@ -68,7 +68,7 @@ public class EnemyPresenter : EnemyBasePresenter
         }
         _player = playerObj.transform;
         Debug.Log($"[EnemyPresenter:{name}] Player 発見。FleeSpeed={_state.FleeSpeed} Accel={_state.FleeAcceleration}");
-        view.SetMovementParams(_state.FleeSpeed, _state.FleeAcceleration);
+        view.SetMovementParams(_state.FleeSpeed, _state.FleeAcceleration, _state.FleeTurnSpeed);
 
         _state.CurrentBehavior
             .Where(b => b == EnemyBehavior.Idle)
