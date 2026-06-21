@@ -91,7 +91,10 @@ public class Player : MonoBehaviour, IFreezable
         if (_animator != null)
         {
             _animator.SetBool("IsMoving", false);
-            _animator.SetTrigger("IntimidationTrigger");
+            // AnyState → Intimidation の遷移条件は GameOverTrigger。
+            // Intimidation ステートは出口トランジションが無く、クリップも Loop 設定のため、
+            // 一度入ればリザルト中ずっとループし続ける。
+            _animator.SetTrigger("GameOverTrigger");
         }
     }
 
