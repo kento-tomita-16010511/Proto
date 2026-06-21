@@ -120,7 +120,6 @@ Transform:
   - {fileID: 4417039849818969953}
   - {fileID: 6985888449887706376}
   - {fileID: 50807353628949010}
-  - {fileID: 1759100312739617596}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &4965305243329411387
@@ -149,9 +148,9 @@ MonoBehaviour:
   webMuzzle: {fileID: 1759100312739617596}
   jumpHeight: 1.5
   gravity: -7.6
-  grapple: {fileID: 0}
   airControlAccel: 18
   slideFriction: 12
+  _webStunEffect: {fileID: 9174096367088576971, guid: 87887eb490816044ea9458869126d792, type: 3}
 --- !u!143 &8146215280517941335
 CharacterController:
   m_ObjectHideFlags: 0
@@ -201,12 +200,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5993151910074269683}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.3, z: 0.45}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: -0.27, z: 0.33}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 8986510389535247278}
+  m_Father: {fileID: 4417039849818969953}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &9100648291644711881
 GameObject:
@@ -239,7 +238,8 @@ Transform:
   m_LocalPosition: {x: 0, y: -0.03, z: -0.48}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 1759100312739617596}
   m_Father: {fileID: 8986510389535247278}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!20 &7396362115055939281

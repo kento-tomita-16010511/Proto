@@ -112,6 +112,7 @@ public class EnemySpawner : MonoBehaviour, IFreezable
         if (TryGetNavMeshSpawnPosition(out Vector3 spawnPos))
         {
             GameObject newEnemy = Instantiate(prefabToSpawn, spawnPos, spawnPoint.rotation);
+            newEnemy.transform.SetParent(this.transform, worldPositionStays: true);
             _activeEnemies.Add(newEnemy);
         }
         else

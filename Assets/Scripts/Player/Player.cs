@@ -41,6 +41,12 @@ public class Player : MonoBehaviour, IFreezable
     [Tooltip("重力加速度（負の値）")]
     [SerializeField] private float gravity = -20f;
 
+    [Header("Air / Momentum Settings")]
+    [Tooltip("空中での方向転換のしやすさ（加速度）。慣性を残しつつ少しだけ操作を効かせる")]
+    [SerializeField] private float airControlAccel = 18f;
+    [Tooltip("着地時、通常速度を超える慣性が残っている間の減速（スライド感）。大きいほど早く止まる")]
+    [SerializeField] private float slideFriction = 12f;
+
     [SerializeField] private WebStunEffect _webStunEffect;
 
     private CharacterController _controller;
@@ -133,6 +139,80 @@ public class Player : MonoBehaviour, IFreezable
             _animator?.SetTrigger("Net");
             LaunchWebStun();
         }
+
+        // --- 速度の更新（接地中は直接制御、空中は慣性を保持しつつ弱いエアコントロール）---
+        float dt = Time.deltaTime;
+        UpdateGroundedOrAirborne(input, isMoving, dt);
+
+        // 1 回の CharacterController.Move で適用する。
+        // transform.Translate と Move を混在させると衝突解決（overlap recovery）と競合するため Move に統一。
+        if (_controller != null)
+            _controller.Move(_velocity * dt);
+        else
+            transform.Translate(_velocity * dt, Space.World);
+    }
+
+    /// <summary>
+    /// 接地中は機敏な直接制御で水平移動・ジャンプを行い、空中では慣性を保持しつつ
+    /// 弱いエアコントロールで方向だけ調整する。重力は常に加算する。
+    /// </summary>
+    private void UpdateGroundedOrAirborne(Vector3 input, bool isMoving, float dt)
+    {
+        if (_controller == null) return;
+
+        bool grounded = _controller.isGrounded;
+
+        // 垂直（重力・ジャンプ）
+        if (grounded && _velocity.y < 0f)
+            _velocity.y = -2f; // 接地を安定させる軽い押し付け
+
+        bool jump = InputManager.Instance?.JumpPressedThisFrame ?? false;
+        if (grounded && jump)
+        {
+            _animator?.SetTrigger("Jump");
+            // v = sqrt(2 * g * h)。上向き初速だけ与える。
+            _velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            grounded = false; // この後の水平処理を空中側（慣性保持）に倒す
+        }
+        _velocity.y += gravity * dt;
+
+        // 入力から望む水平方向（カメラ基準）
+        Vector3 wish = Vector3.zero;
+        if (isMoving)
+        {
+            Vector3 forward = orientation.forward;
+            Vector3 right = orientation.right;
+            forward.y = 0f; right.y = 0f;
+            forward.Normalize(); right.Normalize();
+            wish = (forward * input.z + right * input.x).normalized * speed;
+        }
+
+        Vector3 horiz = new Vector3(_velocity.x, 0f, _velocity.z);
+        float curSpeed = horiz.magnitude;
+
+        if (grounded)
+        {
+            if (curSpeed > speed + 0.1f)
+            {
+                // 通常速度を超える慣性が残っている → スライドとして摩擦で減速しつつ入力で寄せる
+                horiz = Vector3.MoveTowards(horiz, wish, slideFriction * dt);
+            }
+            else
+            {
+                // 通常の機敏な接地移動：水平を入力で直接上書き
+                horiz = wish;
+            }
+        }
+        else if (isMoving)
+        {
+            // 空中：慣性を消さずに、望む方向へ弱く加速（エアコントロール）。
+            float cap = Mathf.Max(curSpeed, speed);
+            horiz += wish.normalized * airControlAccel * dt;
+            horiz = Vector3.ClampMagnitude(horiz, cap);
+        }
+
+        _velocity.x = horiz.x;
+        _velocity.z = horiz.z;
     }
 
     /// <summary>
@@ -144,10 +224,9 @@ public class Player : MonoBehaviour, IFreezable
     {
         if (_webStunEffect == null) return;
 
-        // 射出方向はキャラクター（蜘蛛）本体の水平な正面。カメラ(orientation)は
-        // pitch を含み見下ろし時に水平成分が不安定になるため、本体 transform.forward を使う。
-        Vector3 fwd = transform.forward;
-        fwd.y = 0f;
+        // 射出方向は webMuzzle（カメラの子）の forward。カメラの上下角（pitch）を含むため、
+        // 上を向けば射出も上向きになる。未設定時のみ本体正面へフォールバックする。
+        Vector3 fwd = webMuzzle != null ? webMuzzle.forward : transform.forward;
         if (fwd.sqrMagnitude < 0.0001f) fwd = orientation != null ? orientation.forward : Vector3.forward;
         fwd.Normalize();
 
@@ -155,7 +234,7 @@ public class Player : MonoBehaviour, IFreezable
         Vector3 origin = webMuzzle != null ? webMuzzle.position : transform.position;
         Vector3 pos = origin + fwd * webSpawnDistance;
 
-        // world 空間の弾として生成し、前方へ射出する（親を付けず重力で落下させる）。
+        // world 空間の弾として生成し、照準方向へ射出する（親を付けず重力で落下させる）。
         WebStunEffect web = Instantiate(_webStunEffect, pos, Quaternion.LookRotation(fwd));
         web.Launch(fwd);
     }
