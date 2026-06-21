@@ -902,6 +902,287 @@ public class TitleScene : BaseScene
 
 ---
 
+## 共有アクション：Player/Enemy間で同じ振る舞いを使い回す
+
+### 目的
+
+「ジャンプ」「攻撃」「ダッシュ」など、複数のキャラクター種別（Player / Enemy / NPC 等）で
+共通して使える振る舞いは、種別ごとに個別実装せず、**インターフェース1枚を実装するだけで
+共通の Presenter / Model がそのまま使い回せる形**にすること。
+
+新しいキャラクター種別を追加する際も、対応する `~~View` インターフェースを実装するだけで
+既存の共有Presenterが流用でき、ロジックの重複・実装漏れを防ぐ。
+
+### 構成
+
+| 層 | 役割 | 備考 |
+|------|------|------|
+| `I~~ableModel`     | 能力（ジャンプ等）のロジック・状態を保持 | MonoBehaviour非依存、ScriptableObjectにしない（キャラ毎にインスタンスが必要なため） |
+| `I~~View`           | 入力・トリガーをUniRxで公開し、結果の反映口を提供 | PlayerView・EnemyViewなど複数のViewが実装する |
+| `~~Presenter`（共有） | Viewのイベントを購読し、Modelのメソッドを呼ぶ | Player/Enemy専用に分けず、同じ実装をどちらにも使う |
+
+依存の方向は通常のMVP規約と同じ（`Presenter → View` 呼び出し、`View → Presenter` はUniRxで通知、`Presenter → Model` 読み書き）。
+
+### 実装例：Jump機能をPlayer/Enemy共通にする
+
+#### IJumpable.cs（Model側インターフェース）
+
+```csharp
+/// <summary>
+/// ジャンプ能力を持つことを示すインターフェース。
+/// Player・Enemyなど、ジャンプするキャラクターのModelはこれを実装する。
+/// </summary>
+public interface IJumpable
+{
+    /// <summary>ジャンプ処理を実行する</summary>
+    void Jump();
+}
+```
+
+#### JumpModel.cs
+
+```csharp
+using UniRx;
+using UnityEngine;
+
+/// <summary>
+/// ジャンプの能力・パラメータを保持するModelクラス。
+/// MonoBehaviourに依存せず、キャラクターごとにインスタンスを生成して使う。
+/// </summary>
+public class JumpModel : IJumpable
+{
+    /// <summary>ジャンプ力</summary>
+    private readonly float _jumpPower;
+
+    /// <summary>Viewへ力を伝える購読用Subject</summary>
+    private readonly Subject<Vector3> _onForceApplied = new Subject<Vector3>();
+
+    /// <summary>Viewが購読する力の発生通知</summary>
+    public IObservable<Vector3> OnForceApplied => _onForceApplied;
+
+    /// <summary>
+    /// JumpModelを生成する。
+    /// </summary>
+    /// <param name="jumpPower">付与するジャンプ力</param>
+    public JumpModel(float jumpPower)
+    {
+        _jumpPower = jumpPower;
+    }
+
+    /// <summary>ジャンプ処理を実行し、力の発生をViewへ通知する</summary>
+    public void Jump()
+    {
+        _onForceApplied.OnNext(Vector3.up * _jumpPower);
+    }
+}
+```
+
+#### IJumpView.cs（View側インターフェース）
+
+```csharp
+using UniRx;
+using UnityEngine;
+
+/// <summary>
+/// ジャンプ機能に必要なView側の公開イベントと操作口を定義するインターフェース。
+/// PlayerView・EnemyViewなど、ジャンプ機能を持つViewはこれを実装する。
+/// </summary>
+public interface IJumpView
+{
+    /// <summary>ジャンプ実行のトリガー（入力・AI判断などが発行する）</summary>
+    IObservable<Unit> OnJumpRequested { get; }
+
+    /// <summary>Rigidbodyへ力を加える</summary>
+    void ApplyJumpForce(Vector3 force);
+}
+```
+
+#### JumpPresenter.cs（Player/Enemyで共有する）
+
+```csharp
+using UniRx;
+using UnityEngine;
+
+/// <summary>
+/// ジャンプ機能のロジックを担当する共有Presenterクラス。
+/// IJumpViewを実装したView（PlayerView・EnemyViewなど）であれば
+/// キャラクター種別を問わずそのまま使い回せる。
+/// </summary>
+public class JumpPresenter
+{
+    /// <summary>紐付け対象のView</summary>
+    private readonly IJumpView _view;
+
+    /// <summary>ジャンプ能力を持つModel</summary>
+    private readonly JumpModel _model;
+
+    /// <summary>購読の破棄管理</summary>
+    private readonly CompositeDisposable _disposables = new CompositeDisposable();
+
+    /// <summary>
+    /// JumpPresenterを生成し、Viewのイベントを購読する。
+    /// </summary>
+    /// <param name="view">紐付けるView</param>
+    /// <param name="jumpPower">このキャラクターのジャンプ力</param>
+    public JumpPresenter(IJumpView view, float jumpPower)
+    {
+        _view = view;
+        _model = new JumpModel(jumpPower);
+
+        // Viewからのトリガー → Modelのメソッドを呼ぶ（誰のViewでも同じ1行で済む）
+        _view.OnJumpRequested
+            .Subscribe(_ => _model.Jump())
+            .AddTo(_disposables);
+
+        // Modelの結果 → Viewへ反映
+        _model.OnForceApplied
+            .Subscribe(force => _view.ApplyJumpForce(force))
+            .AddTo(_disposables);
+    }
+
+    /// <summary>購読を破棄する。生成元MonoBehaviourのOnDestroyから呼ぶこと</summary>
+    public void Dispose() => _disposables.Dispose();
+}
+```
+
+#### PlayerView.cs（入力がトリガー）
+
+```csharp
+using UniRx;
+using UnityEngine;
+
+/// <summary>
+/// プレイヤーのUI表示・入力受付を担当するViewクラス。
+/// ジャンプ機能はIJumpViewを実装することでJumpPresenterと連携する。
+/// </summary>
+public class PlayerView : MonoBehaviour, IJumpView
+{
+    /// <summary>ジャンプ力（Inspectorから設定）</summary>
+    [SerializeField] private float _jumpPower = 5f;
+
+    /// <summary>移動・ジャンプに使うRigidbody</summary>
+    [SerializeField] private Rigidbody _rigidbody;
+
+    /// <summary>ジャンプ実行のトリガー（スペースキー入力）</summary>
+    public IObservable<Unit> OnJumpRequested => _onJumpRequested;
+    private readonly Subject<Unit> _onJumpRequested = new Subject<Unit>();
+
+    /// <summary>このViewに紐付くJumpPresenter</summary>
+    private JumpPresenter _jumpPresenter;
+
+    /// <summary>初期化：JumpPresenterを生成し、入力購読を開始する</summary>
+    private void Start()
+    {
+        _jumpPresenter = new JumpPresenter(this, _jumpPower);
+
+        Observable.EveryUpdate()
+            .Where(_ => Input.GetKeyDown(KeyCode.Space))
+            .Subscribe(_ => _onJumpRequested.OnNext(Unit.Default))
+            .AddTo(this);
+    }
+
+    /// <summary>Rigidbodyへジャンプ力を加える</summary>
+    public void ApplyJumpForce(Vector3 force)
+    {
+        Observable.EveryFixedUpdate()
+            .Take(1)
+            .Subscribe(_ => _rigidbody.AddForce(force, ForceMode.Impulse))
+            .AddTo(this);
+    }
+
+    /// <summary>破棄時にPresenterの購読も解放する</summary>
+    private void OnDestroy() => _jumpPresenter?.Dispose();
+}
+```
+
+#### EnemyView.cs（AI判断がトリガー）
+
+```csharp
+using UniRx;
+using UnityEngine;
+
+/// <summary>
+/// 敵のUI表示・AI判断結果の反映を担当するViewクラス。
+/// PlayerViewと同じJumpPresenterを使い回し、トリガーのみAI判断に差し替える。
+/// </summary>
+public class EnemyView : MonoBehaviour, IJumpView
+{
+    /// <summary>ジャンプ力（Inspectorから設定、Playerと異なる値でよい）</summary>
+    [SerializeField] private float _jumpPower = 3f;
+
+    /// <summary>移動・ジャンプに使うRigidbody</summary>
+    [SerializeField] private Rigidbody _rigidbody;
+
+    /// <summary>ジャンプ実行のトリガー（AI判断が発行）</summary>
+    public IObservable<Unit> OnJumpRequested => _onJumpRequested;
+    private readonly Subject<Unit> _onJumpRequested = new Subject<Unit>();
+
+    /// <summary>このViewに紐付くJumpPresenter</summary>
+    private JumpPresenter _jumpPresenter;
+
+    /// <summary>初期化：JumpPresenterを生成する</summary>
+    private void Start()
+    {
+        _jumpPresenter = new JumpPresenter(this, _jumpPower);
+    }
+
+    /// <summary>AIロジック側から呼ばれ、ジャンプ要求を発行する</summary>
+    public void RequestJump() => _onJumpRequested.OnNext(Unit.Default);
+
+    /// <summary>Rigidbodyへジャンプ力を加える</summary>
+    public void ApplyJumpForce(Vector3 force)
+    {
+        Observable.EveryFixedUpdate()
+            .Take(1)
+            .Subscribe(_ => _rigidbody.AddForce(force, ForceMode.Impulse))
+            .AddTo(this);
+    }
+
+    /// <summary>破棄時にPresenterの購読も解放する</summary>
+    private void OnDestroy() => _jumpPresenter?.Dispose();
+}
+```
+
+### この形が規約に沿っている理由
+
+- View → Presenter の通知は `Action` ではなく `IObservable<Unit>` / `Subject` で統一（UniRx規約に準拠）
+- `Update` を直接使わず `Observable.EveryUpdate()`、物理演算は `Observable.EveryFixedUpdate()` を使用
+- `JumpPresenter` は通常Presenterと異なりMonoBehaviourではなく**通常クラス**として実装し、PlayerView・EnemyViewそれぞれの `Start()` から生成する。これにより同一クラスをキャラクター種別を問わず使い回せる
+- 購読は `CompositeDisposable` で管理し、生成元の `OnDestroy()` から `Dispose()` する
+- 新しいキャラクター種別（Boss・NPC等）を追加する場合も、`IJumpView` を実装するだけで `JumpPresenter` がそのまま流用できる
+
+### 他のアクションを追加する場合の命名規則
+
+同じパターンで機能を増やす場合、以下の命名で揃えること。
+
+```
+I~~able      … Modelが実装する能力インターフェース（例: IAttackable, IDashable）
+~~Model      … 能力のロジック・状態（例: AttackModel, DashModel）
+I~~View      … Viewが実装するインターフェース（例: IAttackView, IDashView）
+~~Presenter  … Player/Enemy等で共有する仲介役（例: AttackPresenter, DashPresenter）
+```
+
+ディレクトリは機能ごとの専用フォルダではなく `Common/` 配下にまとめ、
+Player・Enemyなど複数の種別から参照される共有アクションであることを明示すること。
+
+```
+Assets/Scripts/
+└── Common/
+    └── Actions/
+        ├── Jump/
+        │   ├── IJumpable.cs
+        │   ├── JumpModel.cs
+        │   ├── IJumpView.cs
+        │   └── JumpPresenter.cs
+        └── Attack/
+            ├── IAttackable.cs
+            ├── AttackModel.cs
+            ├── IAttackView.cs
+            └── AttackPresenter.cs
+```
+
+---
+
 ## UIコンポーネント：必ずラッパーを使うこと
 
 ### 原則

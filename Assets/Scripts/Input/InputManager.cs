@@ -17,6 +17,8 @@ public class InputManager : MonoBehaviour
     // 右クリック=グラップル。押した瞬間に発射、押している間は接続維持、離すと切断。
     public bool GrapplePressedThisFrame { get; private set; }
     public bool GrappleHeld { get; private set; }
+    // 右クリック=Net（蜘蛛の巣）。押した瞬間に射出する。
+    public bool NetPressedThisFrame { get; private set; }
     public bool JumpPressedThisFrame { get; private set; }
 
     private void Awake()
@@ -44,6 +46,7 @@ public class InputManager : MonoBehaviour
             AttackPressedThisFrame = false;
             GrapplePressedThisFrame = false;
             GrappleHeld = false;
+            NetPressedThisFrame = false;
             JumpPressedThisFrame = false;
             return;
         }
@@ -53,6 +56,7 @@ public class InputManager : MonoBehaviour
         AttackPressedThisFrame = ReadAttack();
         GrapplePressedThisFrame = ReadGrapplePressed();
         GrappleHeld = ReadGrappleHeld();
+        NetPressedThisFrame = ReadNetPressed();
         JumpPressedThisFrame = ReadJump();
     }
 
@@ -141,7 +145,19 @@ public class InputManager : MonoBehaviour
 #endif
     }
 
-private bool ReadJump()
+    /// <summary>Net 射出（右クリック / ゲームパッド西ボタンを押した瞬間）。</summary>
+    private bool ReadNetPressed()
+    {
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+        bool mouseClick = Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame;
+        bool gamepadWest = Gamepad.current != null && Gamepad.current.buttonWest.wasPressedThisFrame;
+        return mouseClick || gamepadWest;
+#else
+        return Input.GetMouseButtonDown(1);
+#endif
+    }
+
+    private bool ReadJump()
     {
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
         bool key = Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame;
