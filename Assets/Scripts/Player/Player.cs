@@ -41,13 +41,13 @@ public class Player : MonoBehaviour, IFreezable
     [Tooltip("重力加速度（負の値）")]
     [SerializeField] private float gravity = -20f;
 
-    [Header("Grapple / Momentum Settings")]
-    [Tooltip("グラップリングフック。右クリックで発射し、外れた後の速度（慣性）は Player が保持する")]
-    [SerializeField] private GrappleController grapple;
+    [Header("Air / Momentum Settings")]
     [Tooltip("空中での方向転換のしやすさ（加速度）。慣性を残しつつ少しだけ操作を効かせる")]
     [SerializeField] private float airControlAccel = 18f;
     [Tooltip("着地時、通常速度を超える慣性が残っている間の減速（スライド感）。大きいほど早く止まる")]
     [SerializeField] private float slideFriction = 12f;
+
+    [SerializeField] private WebStunEffect _webStunEffect;
 
     private CharacterController _controller;
 
@@ -123,6 +123,7 @@ public class Player : MonoBehaviour, IFreezable
         _animator?.SetBool("IsMoving", isMoving);
 
         bool attack = InputManager.Instance?.AttackPressedThisFrame ?? false;
+        bool net = InputManager.Instance?.NetPressedThisFrame ?? false;
 
         // 攻撃モーション中は新たなアクションを受け付けない
         if (!_actionLocked && attack && effectPrefab != null)
@@ -131,28 +132,17 @@ public class Player : MonoBehaviour, IFreezable
             SpawnEffect();
             _animator?.SetTrigger("AttackTrigger");
         }
-
-        // --- グラップル発射 / 切断（右クリック）---------------------------------
-        bool grapplePressed = InputManager.Instance?.GrapplePressedThisFrame ?? false;
-        bool grappleHeld = InputManager.Instance?.GrappleHeld ?? false;
-        if (grapple != null)
+        // 右クリック=Net。蜘蛛の巣アニメーションを発火し、重力落下する Net を射出する。
+        else if (!_actionLocked && net && _webStunEffect != null)
         {
-            if (grapplePressed) grapple.TryAttach();
-            if (!grappleHeld) grapple.Detach();
+            BeginAction();
+            _animator?.SetTrigger("Net");
+            LaunchWebStun();
         }
-        bool grappling = grapple != null && grapple.IsAttached;
 
-        // --- 速度の更新（グラップル中 / 接地 / 空中 の 3 状態）------------------
+        // --- 速度の更新（接地中は直接制御、空中は慣性を保持しつつ弱いエアコントロール）---
         float dt = Time.deltaTime;
-        if (grappling)
-        {
-            // グラップルが速度を全面的に駆動する。外れた瞬間の速度が _velocity に残り慣性になる。
-            _velocity = grapple.ComputeVelocity(_velocity, input, dt);
-        }
-        else
-        {
-            UpdateGroundedOrAirborne(input, isMoving, dt);
-        }
+        UpdateGroundedOrAirborne(input, isMoving, dt);
 
         // 1 回の CharacterController.Move で適用する。
         // transform.Translate と Move を混在させると衝突解決（overlap recovery）と競合するため Move に統一。
@@ -163,8 +153,8 @@ public class Player : MonoBehaviour, IFreezable
     }
 
     /// <summary>
-    /// グラップルしていない時の速度更新。接地中は機敏な直接制御、空中はグラップル等の慣性を保持しつつ
-    /// 弱いエアコントロールで方向だけ調整する。これにより「スイング→リリース→大ジャンプ／スライド」が繋がる。
+    /// 接地中は機敏な直接制御で水平移動・ジャンプを行い、空中では慣性を保持しつつ
+    /// 弱いエアコントロールで方向だけ調整する。重力は常に加算する。
     /// </summary>
     private void UpdateGroundedOrAirborne(Vector3 input, bool isMoving, float dt)
     {
@@ -180,7 +170,7 @@ public class Player : MonoBehaviour, IFreezable
         if (grounded && jump)
         {
             _animator?.SetTrigger("Jump");
-            // v = sqrt(2 * g * h)。グラップルの水平慣性は維持したまま上向き初速だけ与える＝大ジャンプ。
+            // v = sqrt(2 * g * h)。上向き初速だけ与える。
             _velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
             grounded = false; // この後の水平処理を空中側（慣性保持）に倒す
         }
@@ -216,7 +206,6 @@ public class Player : MonoBehaviour, IFreezable
         else if (isMoving)
         {
             // 空中：慣性を消さずに、望む方向へ弱く加速（エアコントロール）。
-            // 現在速度か通常速度の大きい方を上限にして、慣性での高速を削らない。
             float cap = Mathf.Max(curSpeed, speed);
             horiz += wish.normalized * airControlAccel * dt;
             horiz = Vector3.ClampMagnitude(horiz, cap);
@@ -226,6 +215,29 @@ public class Player : MonoBehaviour, IFreezable
         _velocity.z = horiz.z;
     }
 
+    /// <summary>
+    /// プレイヤー前方に WebStunEffect（蜘蛛の巣）を生成して射出する。
+    /// 射出後は WebStunEffect 側の Rigidbody の重力に従って落下し、
+    /// 当たった敵を WebStunEffect が EnemyPresenter.Stun() でスタンさせる。
+    /// </summary>
+    public void LaunchWebStun()
+    {
+        if (_webStunEffect == null) return;
+
+        // 射出方向は webMuzzle（カメラの子）の forward。カメラの上下角（pitch）を含むため、
+        // 上を向けば射出も上向きになる。未設定時のみ本体正面へフォールバックする。
+        Vector3 fwd = webMuzzle != null ? webMuzzle.forward : transform.forward;
+        if (fwd.sqrMagnitude < 0.0001f) fwd = orientation != null ? orientation.forward : Vector3.forward;
+        fwd.Normalize();
+
+        // 射出口は蜘蛛の口元（webMuzzle）。未設定時のみ本体中心にフォールバックする。
+        Vector3 origin = webMuzzle != null ? webMuzzle.position : transform.position;
+        Vector3 pos = origin + fwd * webSpawnDistance;
+
+        // world 空間の弾として生成し、照準方向へ射出する（親を付けず重力で落下させる）。
+        WebStunEffect web = Instantiate(_webStunEffect, pos, Quaternion.LookRotation(fwd));
+        web.Launch(fwd);
+    }
     /// <summary>
     /// プレイヤー前方に蜘蛛の巣エフェクトを生成する。
     /// Net アクション発火時に呼ばれる（検証用に public）。
