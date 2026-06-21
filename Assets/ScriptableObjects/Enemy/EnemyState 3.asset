@@ -10,10 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dab39b053e31c4b4a9f1b4b5d8a0f4a6, type: 3}
-  m_Name: EnemyState
+  m_Name: EnemyState 3
   m_EditorClassIdentifier: Assembly-CSharp::EnemyState
   detectionRange: 10
   fieldOfViewAngle: 120
   backAngleThreshold: 150
-  fleeSpeed: 5
+  fleeSpeed: 4
   fleeDistance: 8
+  fleeAcceleration: 20
+  fleeUpdateInterval: 0.3
+  fleeStopMultiplier: 1.2
+  proximityRange: 3
+  navMeshSampleDistance: 5
+  stunDuration: 3
+  stunShakeAmplitude: 0.15
+  stunShakeFrequency: 8

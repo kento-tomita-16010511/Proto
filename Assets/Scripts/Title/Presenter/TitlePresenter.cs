@@ -46,6 +46,12 @@ public class TitlePresenter : MonoBehaviour, ISceneLifecycle
         Debug.Log("[TitlePresenter] Start called");
         var ct = this.GetCancellationTokenOnDestroy();
 
+        // TitleState はアセット（ScriptableObject）でプレイ中ずっと生存するため、
+        // 前回の Title→Main 遷移で立てた Transitioning フェーズが残っている。
+        // OnEnable は再ロードでは再発火しないので、TitleScene が読み込まれる度に
+        // ここで明示的に初期化し、Result→Title→Main のループでもスタートできるようにする。
+        titleState.SetPhase(ScenePhase.Title);
+
         // デバッグ用：最初の3フレームをログ出力（Update の代替）
         Observable.EveryUpdate()
             .Take(3)

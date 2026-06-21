@@ -1,24 +1,36 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using ithappy.Animals_FREE;
 using UnityEngine;
 using UnityEngine.AI;
 
 /// <summary>
-/// NavMeshAgent または CreatureMover を操作するエネミーの View クラス。
+/// NavMeshAgent を操作するエネミーの View クラス。
 /// 移動指示のみを受け付け、判定ロジックは持たない。
-/// NavMeshAgent が存在しない場合は CreatureMover にフォールバックする。
+/// 移動に応じたアニメーション駆動（旧 CreatureMover.AnimationHandler）を内包し、
+/// 毎フレーム NavMeshAgent の速度から Animator パラメータを平滑化して設定する。
 /// </summary>
 public class EnemyView : MonoBehaviour
 {
-
-    [SerializeField] private DamageVFX damageVFX;
-
     [Header("Animation Settings")]
     [SerializeField] private Animator animator;
     [SerializeField] private string verticalParam = "Vert";
     [SerializeField] private string stateParam = "State";
+    [SerializeField] private string attackParam = "Attack";
     private Vector3 _lastTargetPosition;
+
+    // --- ロコモーションアニメーション補間（CreatureMover.AnimationHandler から移植）---
+    /// <summary>速度変化に対するアニメーション値の追従速度（CreatureMover の k_InputFlow 相当）。</summary>
+    private const float AnimInputFlow = 4.5f;
+    /// <summary>前後左右移動量の平滑化値（verticalParam=Vert 用）。</summary>
+    private Vector2 _flowAxis;
+    /// <summary>歩行/走行ステートの平滑化値（stateParam=State 用）。</summary>
+    private float _flowState;
+
+    /// <summary>IK 注視に使う、平滑化された注視先。離散的に飛ぶ _lastTargetPosition を滑らかに追従する。</summary>
+    private Vector3 _smoothedLookPosition;
+    private bool _hasLookPosition;
+    /// <summary>注視先の追従速度（1/秒）。大きいほど素早く向き直る。</summary>
+    private const float LookFollowSpeed = 5f;
 
     /// <summary>
     /// スタン中に横揺れさせるビジュアル用の子 Transform。
@@ -32,15 +44,17 @@ public class EnemyView : MonoBehaviour
     /// <summary>Dissolve（崩壊）演出で溶かす対象のメッシュ。子の SkinnedMeshRenderer をアサインする。</summary>
     [SerializeField] private SkinnedMeshRenderer _skinnedMeshRenderer;
 
+    [SerializeField] private NavMeshAgent _agent;
+
+    [SerializeField] private　ParticleSystem _particleSystem;
+
+    [SerializeField] private CharacterController _characterController;
+
     /// <summary>シェーダーの _DissolveAmount プロパティID（Shader.PropertyToID でキャッシュ）。</summary>
     private static readonly int DissolveAmountId = Shader.PropertyToID("_DissolveAmount");
 
     /// <summary>個体ごとのマテリアルインスタンス。共有マテリアルを汚さないよう初回アクセスでキャッシュする。</summary>
     private Material _dissolveMaterialInstance;
-
-
-    /// <summary>破壊エフェクト（DamageVFX）がアサインされているか。</summary>
-    public bool HasDamageVFX => damageVFX != null;
 
     /// <summary>
     /// 死亡時の SE（敵種別ごとに seEnum で設定）を再生する。
@@ -74,25 +88,73 @@ public class EnemyView : MonoBehaviour
     /// </summary>
     public UniTask PlayDamageVFXAsync()
     {
-        if (damageVFX == null) return UniTask.CompletedTask;
-        return damageVFX.DieAsync();
+        _characterController.enabled = false;
+        if (_particleSystem == null) return UniTask.CompletedTask;
+        _particleSystem.gameObject.SetActive(true);
+        _particleSystem.Play();
+        return UniTask.CompletedTask;
     }
 
     /// <summary>移動を担う NavMeshAgent。未設定時は Awake で自動取得する。</summary>
 
-    private NavMeshAgent _agent;
     /// <summary>コンポーネント参照を確立する。</summary>
     private void Awake()
     {
-        if (_agent == null) _agent = GetComponent<NavMeshAgent>();
+        _particleSystem.gameObject.SetActive(false);
         if (animator == null) animator = GetComponent<Animator>();
+    }
+
+    /// <summary>
+    /// 毎フレーム、NavMeshAgent の速度からロコモーションアニメーションを駆動する。
+    /// CreatureMover が内部で行っていた「移動量 → Animator パラメータ」変換と平滑化を移植したもの。
+    /// </summary>
+    private void Update()
+    {
+        UpdateLocomotionAnimation(Time.deltaTime);
+
+        // 離散的に更新される注視先（逃走先）を毎フレーム滑らかに追従させ、IK のビクつきを防ぐ。
+        if (_hasLookPosition)
+        {
+            _smoothedLookPosition = Vector3.Lerp(
+                _smoothedLookPosition, _lastTargetPosition,
+                1f - Mathf.Exp(-LookFollowSpeed * Time.deltaTime));
+        }
+    }
+
+    /// <summary>
+    /// NavMeshAgent の速度をローカル空間の前後左右成分に変換し、最大速度で正規化したうえで
+    /// CreatureMover.AnimationHandler と同じ平滑化を行って Animator に反映する。
+    /// </summary>
+    private void UpdateLocomotionAnimation(float deltaTime)
+    {
+        if (animator == null) return;
+
+        Vector3 velocity = _agent != null ? _agent.velocity : Vector3.zero;
+        float maxSpeed = (_agent != null && _agent.speed > Mathf.Epsilon) ? _agent.speed : 1f;
+
+        // ワールド速度をローカル前後左右成分へ変換し、最大速度で 0〜1 に正規化（GenAnimationAxis 相当）。
+        Vector2 axis = new Vector2(
+            Vector3.Dot(velocity, transform.right),
+            Vector3.Dot(velocity, transform.forward)) / maxSpeed;
+        axis = Vector2.ClampMagnitude(axis, 1f);
+
+        // 移動していれば走行ステート(1)、停止していれば待機ステート(0)へ寄せる。
+        float state = velocity.sqrMagnitude > 0.0001f ? 1f : 0f;
+
+        // 目標値へ一定速度で追従しつつ、到達したら正確に停止する（オーバーシュート＝振動を防ぐ）。
+        // CreatureMover の normalized/Sign による固定ステップは目標付近で永久に振動するため MoveTowards に変更。
+        _flowAxis = Vector2.MoveTowards(_flowAxis, axis, AnimInputFlow * deltaTime);
+        _flowState = Mathf.MoveTowards(_flowState, state, AnimInputFlow * deltaTime);
+
+        animator.SetFloat(verticalParam, _flowAxis.magnitude);
+        animator.SetFloat(stateParam, Mathf.Clamp01(_flowState));
     }
 
     private void OnAnimatorIK()
     {
-        if (animator == null) return;
-        // CreatureMover の LookWeight ロジックと同様の設定
-        animator.SetLookAtPosition(_lastTargetPosition);
+        if (animator == null || !_hasLookPosition) return;
+        // CreatureMover の LookWeight ロジックと同様の設定（注視先は平滑化済みの値を使う）
+        animator.SetLookAtPosition(_smoothedLookPosition);
         animator.SetLookAtWeight(1f, 0.3f, 0.7f, 1f);
     }
 
@@ -118,11 +180,14 @@ public class EnemyView : MonoBehaviour
             _agent.isStopped = false;
             _agent.SetDestination(destination);
             _lastTargetPosition = destination;
+            // 初回はスナップ、以降は Update で滑らかに追従する。
+            if (!_hasLookPosition)
+            {
+                _smoothedLookPosition = destination;
+                _hasLookPosition = true;
+            }
             return;
         }
-
-        // CreatureMover が削除されたため、NavMeshAgent がない場合は移動不可
-        Debug.LogWarning($"[EnemyView:{name}] NavMeshAgent がないため移動できません。");
     }
 
     /// <summary>
@@ -166,16 +231,5 @@ public class EnemyView : MonoBehaviour
             _agent.velocity = Vector3.zero;
             return;
         }
-    }
-
-    /// <summary>
-    /// 外部の制御ロジックから計算されたアニメーションパラメータを適用します。
-    /// </summary>
-    public void SetAnimationParams(float vertical, float state)
-    {
-        if (animator == null) return;
-
-        animator.SetFloat(verticalParam, vertical);
-        animator.SetFloat(stateParam, state);
     }
 }

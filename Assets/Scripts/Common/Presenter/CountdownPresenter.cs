@@ -42,6 +42,7 @@ public class CountdownPresenter : MonoBehaviour
     /// <param name="ct">キャンセルトークン。</param>
     public async UniTask PlayAsync(CancellationToken ct)
     {
+        SoundManager.Instance.StopBGM();
         // カウントダウン開始と同時に SE を再生する（3→2→1→GO!! の演出に合わせる）。
         SoundManager.Instance?.PlaySE(SEEnum.Countdown);
         await countdownView.PlayCountAsync(ct);

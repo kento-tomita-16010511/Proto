@@ -14,7 +14,9 @@ public class InputManager : MonoBehaviour
     public Vector3 MoveInput { get; private set; }
     public Vector2 LookDelta { get; private set; }
     public bool AttackPressedThisFrame { get; private set; }
-    public bool NetPressedThisFrame { get; private set; }
+    // 右クリック=グラップル。押した瞬間に発射、押している間は接続維持、離すと切断。
+    public bool GrapplePressedThisFrame { get; private set; }
+    public bool GrappleHeld { get; private set; }
     public bool JumpPressedThisFrame { get; private set; }
 
     private void Awake()
@@ -40,7 +42,8 @@ public class InputManager : MonoBehaviour
             MoveInput = Vector3.zero;
             LookDelta = Vector2.zero;
             AttackPressedThisFrame = false;
-            NetPressedThisFrame = false;
+            GrapplePressedThisFrame = false;
+            GrappleHeld = false;
             JumpPressedThisFrame = false;
             return;
         }
@@ -48,7 +51,8 @@ public class InputManager : MonoBehaviour
         MoveInput = ReadMove();
         LookDelta = ReadLook();
         AttackPressedThisFrame = ReadAttack();
-        NetPressedThisFrame = ReadNet();
+        GrapplePressedThisFrame = ReadGrapplePressed();
+        GrappleHeld = ReadGrappleHeld();
         JumpPressedThisFrame = ReadJump();
     }
 
@@ -113,7 +117,8 @@ public class InputManager : MonoBehaviour
 #endif
     }
 
-    private bool ReadNet()
+    /// <summary>グラップル発射（右クリック / ゲームパッド西ボタンを押した瞬間）。</summary>
+    private bool ReadGrapplePressed()
     {
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
         bool mouseClick = Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame;
@@ -121,6 +126,18 @@ public class InputManager : MonoBehaviour
         return mouseClick || gamepadWest;
 #else
         return Input.GetMouseButtonDown(1);
+#endif
+    }
+
+    /// <summary>グラップル接続維持（右クリック / ゲームパッド西ボタンを押している間）。離すと切断。</summary>
+    private bool ReadGrappleHeld()
+    {
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+        bool mouseHeld = Mouse.current != null && Mouse.current.rightButton.isPressed;
+        bool gamepadWest = Gamepad.current != null && Gamepad.current.buttonWest.isPressed;
+        return mouseHeld || gamepadWest;
+#else
+        return Input.GetMouseButton(1);
 #endif
     }
 

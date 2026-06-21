@@ -29,13 +29,10 @@ public class EnemyPresenter : EnemyBasePresenter
     [SerializeField] private LayerMask detectionMask = -1;
 
     /// <summary>撃破時に Dissolve（崩壊）させる秒数。</summary>
-    [SerializeField] private float _dissolveDuration = 1.5f;
+    [SerializeField] private float _dissolveDuration = 0.25f;
 
     private EnemyState _state;
     private Transform _player;
-
-    /// <summary>前回逃走先を計算した時刻。fleeUpdateInterval の間隔制御に使う。</summary>
-    private float _lastFleeCalcTime;
 
     /// <summary>現在逃走中かどうか。ヒステリシス判定に使う。</summary>
     private bool _isFleeing;
@@ -192,6 +189,7 @@ public class EnemyPresenter : EnemyBasePresenter
         _shakeCts?.Cancel();
         view.StopMoving();
         view.PlayDeathSE(); // 敵種別ごとの死亡 SE を再生
+        view.PlayDamageVFXAsync().Forget(); // 砕け散る VFX は再生するが、破棄はしない
 
         // メッシュ崩壊中に当たり判定が残らないよう、配下のコライダーを全て無効化する
         // （ルートの CharacterController と StunCollider など）。
@@ -226,10 +224,7 @@ public class EnemyPresenter : EnemyBasePresenter
     {
         _isFleeing = true;
         _state.SetBehavior(EnemyBehavior.Fleeing);
-        Vector3 fleePos = CalcFleePosition();
-        Debug.Log($"[EnemyPresenter:{name}] BeginFlee → fleePos={fleePos:F2} (自分={transform.position:F2})");
-        view.SetDestination(fleePos);
-        _lastFleeCalcTime = Time.time;
+        view.SetDestination(CalcFleePosition());
     }
 
     /// <summary>逃走を停止する。</summary>
@@ -239,27 +234,27 @@ public class EnemyPresenter : EnemyBasePresenter
         _state.SetBehavior(EnemyBehavior.Idle);
     }
 
-    /// <summary>逃走先を fleeUpdateInterval の間隔で再計算する。</summary>
+    /// <summary>
+    /// 逃走先を毎フレーム更新する。
+    /// 参考実装（EnemyNavigation）と同様、常にプレイヤーと反対方向 FleeDistance 先を目的地にし続けることで、
+    /// 目的地が連続的に前方へ伸び続け、NavMeshAgent が減速・経路再計算で脈動せず滑らかに移動する。
+    /// </summary>
     private void UpdateFleeDestination()
     {
-        if (Time.time - _lastFleeCalcTime < _state.FleeUpdateInterval) return;
         view.SetDestination(CalcFleePosition());
-        _lastFleeCalcTime = Time.time;
     }
 
-    /// <summary>プレイヤーから遠ざかる方向に逃走先を計算し、NavMesh 上の最近点を返す。
-    /// 真後ろが壁の場合は ±45°・±90° の方向も順に試みる。</summary>
+    /// <summary>
+    /// プレイヤーと反対方向の FleeDistance 先を逃走先として返す（参考実装 EnemyNavigation と同方式）。
+    /// 旧実装の多方向 SamplePosition は、採用角度が毎フレーム切り替わって目的地が左右に飛ぶ（ジグザグ）うえ、
+    /// 手前の NavMesh 点へスナップして Agent の減速を招くためカクツキの原因となっていた。
+    /// 経路の NavMesh へのクランプは NavMeshAgent.SetDestination に任せる。
+    /// </summary>
     private Vector3 CalcFleePosition()
     {
-        Vector3 awayDir = (transform.position - _player.position).normalized;
-        float[] angles = { 0f, 45f, -45f, 90f, -90f };
-        foreach (float a in angles)
-        {
-            Vector3 dir = Quaternion.Euler(0f, a, 0f) * awayDir;
-            Vector3 target = transform.position + dir * _state.FleeDistance;
-            if (NavMesh.SamplePosition(target, out NavMeshHit hit, _state.NavMeshSampleDistance, NavMesh.AllAreas))
-                return hit.position;
-        }
+        Vector3 awayDir = transform.position - _player.position;
+        awayDir.y = 0f;
+        awayDir.Normalize();
         return transform.position + awayDir * _state.FleeDistance;
     }
 
