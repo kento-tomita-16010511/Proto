@@ -52,6 +52,19 @@ public class EnemyView : MonoBehaviour
     private bool _hasFacingDir;
 
     /// <summary>
+    /// 大きな旋回中にコミットした回転方向（+1=左回り / -1=右回り / 0=未コミット）。
+    /// 真後ろ（180°）付近では desiredVelocity の左右ブレで「最短回転方向」が毎フレーム
+    /// 反転し、左右にカクついて逃走が遅れる。一度旋回方向を確定したら向き直るまで固定する。
+    /// </summary>
+    private float _turnSign;
+
+    /// <summary>この角度を超える旋回が必要になったら回転方向をコミットする（度）。</summary>
+    private const float TurnCommitAngle = 150f;
+
+    /// <summary>コミットした回転をこの角度まで向き直ったら解除する（度）。</summary>
+    private const float TurnReleaseAngle = 20f;
+
+    /// <summary>
     /// スタン中に横揺れさせるビジュアル用の子 Transform。
     /// NavMeshAgent はルート Transform を制御するため、揺れはこの子で行う。
     /// 未設定の場合はシェイクをスキップする。
@@ -203,9 +216,36 @@ public class EnemyView : MonoBehaviour
             _hasFacingDir = true;
         }
 
-        Quaternion target = Quaternion.LookRotation(dir);
-        transform.rotation = Quaternion.RotateTowards(
-            transform.rotation, target, _turnSpeedDeg * deltaTime);
+        // 現在の前方と目標方向の符号付き角度（-180〜180）。
+        Vector3 fwd = transform.forward;
+        fwd.y = 0f;
+        float signedAngle = Vector3.SignedAngle(fwd, dir, Vector3.up);
+        float absAngle = Mathf.Abs(signedAngle);
+        float step = _turnSpeedDeg * deltaTime;
+
+        // 180°付近は「最短回転方向」が左右のブレで反転しカクつくため、
+        // 大きな旋回に入った時点で回転方向を確定し、向き直るまで固定する。
+        if (_turnSign == 0f)
+        {
+            if (absAngle > TurnCommitAngle)
+                _turnSign = signedAngle >= 0f ? 1f : -1f;
+        }
+        else if (absAngle < TurnReleaseAngle)
+        {
+            _turnSign = 0f;
+        }
+
+        if (_turnSign != 0f)
+        {
+            // コミットした一方向へ等速で旋回（行き過ぎないよう残り角でクランプ）。
+            transform.rotation *= Quaternion.Euler(0f, _turnSign * Mathf.Min(step, absAngle), 0f);
+        }
+        else
+        {
+            Quaternion target = Quaternion.LookRotation(dir);
+            transform.rotation = Quaternion.RotateTowards(
+                transform.rotation, target, step);
+        }
     }
 
     /// <summary>

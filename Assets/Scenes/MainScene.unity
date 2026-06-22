@@ -541,7 +541,7 @@ MonoBehaviour:
   enemyPool:
   - enemyName: "\u30C1\u30AD\u30F3"
     prefab: {fileID: 8073443194988779917, guid: 6b0b0b098177a3b439c80991ec9deacc, type: 3}
-    weight: 5
+    weight: 4
   - enemyName: "\u9E7F"
     prefab: {fileID: 7402009758359158996, guid: 4ecab060b0afb5d4db61f7f1311b9e24, type: 3}
     weight: 3
@@ -550,11 +550,13 @@ MonoBehaviour:
     weight: 2
   - enemyName: "\u5BC5"
     prefab: {fileID: 6599273590427963445, guid: ec056464b9f5a43428d04608642c08bd, type: 3}
-    weight: 1
+    weight: 2
   spawnInterval: 0.2
   maxEnemies: 10
   spawnPoint: {fileID: 209047535}
   spawnRadius: 35.2
+  exclusionInnerRadius: 8.8
+  exclusionZones: []
   navMeshSampleDistance: 2
   maxSampleAttempts: 10
   areaMask: -1
@@ -567,7 +569,7 @@ Transform:
   m_GameObject: {fileID: 209047533}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.57143, y: 5.41, z: 5.19617}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

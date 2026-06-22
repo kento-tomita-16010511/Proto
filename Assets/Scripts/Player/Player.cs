@@ -73,6 +73,10 @@ public class Player : MonoBehaviour, IFreezable
     public IObservable<Unit> OnDeath => _onDeath;
     private readonly Subject<Unit> _onDeath = new Subject<Unit>();
 
+    /// <summary>噛みつき攻撃を開始した瞬間に通知するイベント（寅が回避反応に使う）。</summary>
+    public IObservable<Unit> OnAttackStarted => _onAttackStarted;
+    private readonly Subject<Unit> _onAttackStarted = new Subject<Unit>();
+
     /// <summary>死亡済みかどうか。多重ダメージ・多重死亡を防ぐ。</summary>
     private bool _isDead;
 
@@ -134,6 +138,7 @@ public class Player : MonoBehaviour, IFreezable
         _particleSystem.gameObject.SetActive(false);
         CurrentHP = maxHP;
         _onDeath.AddTo(this);
+        _onAttackStarted.AddTo(this);
         _controller = GetComponent<CharacterController>();
 
         // Player 本体ではなく、Spider モデル側の Animator（コントローラ付き）を取得する
@@ -215,6 +220,7 @@ public class Player : MonoBehaviour, IFreezable
             BeginAction();
             SpawnEffect();
             _animator?.SetTrigger("AttackTrigger");
+            _onAttackStarted.OnNext(Unit.Default);
         }
         // 右クリック=Net。蜘蛛の巣アニメーションを発火し、重力落下する Net を射出する。
         else if (!_actionLocked && net && _webStunEffect != null)

@@ -391,6 +391,24 @@ MonoBehaviour:
   attackTurnSpeed: 720
   attackDamage: 100
   attackHitRange: 3
+  runThroughSpeed: 12
+  runThroughDistance: 6
+  runThroughMaxDuration: 1.5
+  runThroughArriveThreshold: 0.6
+  runThroughStopDuration: 0.4
+  stalkRadius: 5
+  stalkSpeed: 4.5
+  stalkDuration: 2
+  stalkStep: 2.5
+  dodgeReactRange: 4
+  dodgeDistance: 3
+  dodgeSpeed: 8
+  dodgeMaxDuration: 0.5
+  dodgeArriveThreshold: 0.4
+  dodgeCooldown: 1.2
+  dodgeTurnSpeed: 700
+  fleeSpeed: 6
+  fleeDistance: 8
   _dissolveDuration: 0.25
 --- !u!114 &7777599116804331435
 MonoBehaviour:
