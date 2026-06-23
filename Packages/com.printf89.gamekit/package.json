@@ -1,0 +1,19 @@
+{
+  "name": "com.printf89.gamekit",
+  "version": "0.1.0",
+  "displayName": "Printf89 GameKit",
+  "description": "Unity 用の汎用ゲーム基盤ライブラリ。Popup / Sound / Effect / UI などプロジェクト非依存のコンポーネントを集約する。MVP + UniRx/UniTask 構成を前提とする。\n\n前提パッケージ（利用側プロジェクトに必要）:\n- UniTask (com.cysharp.unitask)\n- UniRx (asmdef 名: UniRx)\n- com.unity.ugui",
+  "unity": "6000.0",
+  "author": {
+    "name": "printf89",
+    "email": "printf89@gmail.com"
+  },
+  "keywords": [
+    "gamekit",
+    "utility",
+    "ui",
+    "sound",
+    "popup"
+  ],
+  "dependencies": {}
+}

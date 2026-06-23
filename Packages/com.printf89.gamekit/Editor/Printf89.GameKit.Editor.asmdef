@@ -1,0 +1,18 @@
+{
+    "name": "Printf89.GameKit.Editor",
+    "rootNamespace": "Printf89.GameKit.Editor",
+    "references": [
+        "Printf89.GameKit"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
