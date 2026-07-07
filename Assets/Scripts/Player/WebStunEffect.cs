@@ -94,14 +94,14 @@ public class WebStunEffect : MonoBehaviour
         TryStun(collision.gameObject);
     }
 
-    /// <summary>衝突相手が Enemy なら一度だけスタンを付与する。</summary>
+    /// <summary>衝突相手がスタン可能な敵なら一度だけスタンを付与する。</summary>
     private void TryStun(GameObject other)
     {
         if (_hasStunned || other == null) return;
-        if (!other.CompareTag("Enemy")) return;
 
-        // コライダーは子オブジェクト側に付いている場合があるため、親方向も探索する。
-        var enemy = other.GetComponentInParent<EnemyPresenter>();
+        // コライダーは子オブジェクト（StunCollider 等、Untagged の場合あり）に付いていることがあるため、
+        // タグではなく IStunnable を親方向に探索して判定する（EnemyPresenter / TigerPresenter 共通）。
+        var enemy = other.GetComponentInParent<IStunnable>();
         if (enemy == null) return;
 
         enemy.Stun();

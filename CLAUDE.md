@@ -1261,6 +1261,82 @@ CLAUDE.md のコンポーネント対応表に追記する
 
 ---
 
+## クラス内メンバーの記述順序
+
+可読性のため、クラス内のメンバーは以下の順序で記述すること。
+
+```
+1. 定数・フィールド（変数）
+   ├── public    static → public    instance
+   ├── protected static → protected instance
+   ├── internal  static → internal  instance
+   └── private   static → private   instance
+2. コンストラクタ / デストラクタ
+3. デリゲート / イベント
+4. プロパティ
+5. メソッド
+```
+
+- 大分類（定数・フィールド → コンストラクタ/デストラクタ → デリゲート/イベント → プロパティ → メソッド）の順序は固定とする。
+- 定数・フィールドの中では、アクセス修飾子を `public` → `protected` → `internal` → `private` の順に並べる。
+- さらにそれぞれのアクセス修飾子の中では `static` なものを先に書き、その後にインスタンスのものを書く。
+
+```csharp
+// ✅ 正しい：定められた順序で記述
+public class SamplePresenter : MonoBehaviour
+{
+    // 1. 定数・フィールド（public → protected → internal → private、各々 static 優先）
+    public const int MaxRetryCount = 3;
+    public static readonly string DefaultLabel = "Sample";
+
+    protected static int ProtectedCounter;
+    protected readonly float ProtectedSpeed = 1f;
+
+    internal static bool InternalDebugFlag;
+    internal readonly string InternalTag = "Debug";
+
+    private static int s_instanceCount;
+    [SerializeField] private float _jumpPower = 5f;
+    private readonly CompositeDisposable _disposables = new CompositeDisposable();
+
+    // 2. コンストラクタ / デストラクタ
+    public SamplePresenter()
+    {
+        s_instanceCount++;
+    }
+
+    ~SamplePresenter()
+    {
+        s_instanceCount--;
+    }
+
+    // 3. デリゲート / イベント
+    public event Action OnSampleEvent;
+
+    // 4. プロパティ
+    public bool IsActive { get; private set; }
+
+    // 5. メソッド
+    public void DoSomething()
+    {
+        OnSampleEvent?.Invoke();
+    }
+}
+
+// ❌ 禁止：順序がバラバラ（メソッドの後にフィールドが出てくる、private が public より先など）
+public class SamplePresenter : MonoBehaviour
+{
+    private readonly CompositeDisposable _disposables = new CompositeDisposable();
+
+    public void DoSomething() { ... }
+
+    public const int MaxRetryCount = 3; // ❌ メソッドより後に定数が出てきている
+    [SerializeField] private float _jumpPower = 5f; // ❌ private が public より前
+}
+```
+
+---
+
 ## 新規プロダクト作成時のフロー
 
 本プロジェクトを元に新しいゲーム・アプリケーションを作る際は、
@@ -1307,5 +1383,6 @@ STEP 6｜規約チェック（実装完了後に必ず確認）
 ├── Utilityクラスが状態・データ構造を持っていないか
 ├── ネストが3階層以上になっていないか
 ├── Unity標準UIコンポーネントが直接参照されていないか
+├── クラス内メンバーが既定の順序（定数・フィールド→コンストラクタ/デストラクタ→デリゲート/イベント→プロパティ→メソッド）になっているか
 └── すべてのクラス・メソッド・フィールドにコメントがあるか
 ```

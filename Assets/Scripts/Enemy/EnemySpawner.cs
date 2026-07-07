@@ -24,6 +24,13 @@ public class EnemySpawner : MonoBehaviour, IFreezable
     [Header("湧き範囲の半径")]
     [SerializeField] private float spawnRadius = 5f;
 
+    [Header("湧かない範囲（除外設定）")]
+    [Tooltip("中心からこの半径より内側には湧かせない（0 で無効）")]
+    [SerializeField] private float exclusionInnerRadius = 0f;
+
+    [Tooltip("指定した円の内側には湧かせない（複数指定可）")]
+    [SerializeField] private List<SpawnExclusionZone> exclusionZones = new List<SpawnExclusionZone>();
+
     [Header("NavMesh Settings")]
     /// <summary>NavMesh 上の点を探す際の許容距離。候補点からこの距離内に NavMesh があれば採用</summary>
     [SerializeField] private float navMeshSampleDistance = 2f;
@@ -62,9 +69,24 @@ public class EnemySpawner : MonoBehaviour, IFreezable
         _cancellationTokenSource?.Dispose();
     }
 
+    /// <summary>
+    /// スポーンを停止し、現在生存している敵をすべて削除する。
+    /// MainScene を離れてリザルトへ遷移する際に呼ばれ、敵が背景に残らないようにする。
+    /// </summary>
     public void StopSpawning()
     {
         _cancellationTokenSource?.Cancel();
+        ClearAllEnemies();
+    }
+
+    /// <summary>生成済みの敵をすべて破棄し、追跡リストを空にする。</summary>
+    private void ClearAllEnemies()
+    {
+        for (int i = 0; i < _activeEnemies.Count; i++)
+        {
+            if (_activeEnemies[i] != null) Destroy(_activeEnemies[i]);
+        }
+        _activeEnemies.Clear();
     }
 
     private async UniTaskVoid StartSpawning(CancellationToken cancellationToken)
@@ -79,8 +101,20 @@ public class EnemySpawner : MonoBehaviour, IFreezable
                     await UniTask.Delay(100, cancellationToken: cancellationToken);
                     continue;
                 }
+
+                // 撃破済み（Destroy 済み = null）の敵を追跡リストから除去する。
                 _activeEnemies.RemoveAll(enemy => enemy == null);
-                if (_activeEnemies.Count < maxEnemies) SpawnEnemy();
+
+                // 常に maxEnemies 体になるよう、不足分だけ補充スポーンする。
+                while (_activeEnemies.Count < maxEnemies)
+                {
+                    int before = _activeEnemies.Count;
+                    SpawnEnemy();
+                    // スポーンに失敗（NavMesh 上の有効位置なし）した場合は
+                    // 無限ループを避けるため、このフレームでの補充を打ち切る。
+                    if (_activeEnemies.Count == before) break;
+                }
+
                 int delayMs = Mathf.RoundToInt(Mathf.Max(0, spawnInterval) * 1000);
                 await UniTask.Delay(delayMs, cancellationToken: cancellationToken);
             }
@@ -96,6 +130,29 @@ public class EnemySpawner : MonoBehaviour, IFreezable
         Gizmos.DrawSphere(center, spawnRadius);
         Gizmos.color = Color.green;
         Gizmos.DrawWireSphere(center, spawnRadius);
+
+        // 湧かない範囲（内側除外半径）を赤で表示
+        if (exclusionInnerRadius > 0f)
+        {
+            Gizmos.color = new Color(1f, 0f, 0f, 0.2f);
+            Gizmos.DrawSphere(center, exclusionInnerRadius);
+            Gizmos.color = Color.red;
+            Gizmos.DrawWireSphere(center, exclusionInnerRadius);
+        }
+
+        // 個別の除外ゾーンを赤で表示
+        if (exclusionZones != null)
+        {
+            foreach (var zone in exclusionZones)
+            {
+                if (zone == null || zone.radius <= 0f) continue;
+                Vector3 zc = zone.GetCenter();
+                Gizmos.color = new Color(1f, 0f, 0f, 0.2f);
+                Gizmos.DrawSphere(zc, zone.radius);
+                Gizmos.color = Color.red;
+                Gizmos.DrawWireSphere(zc, zone.radius);
+            }
+        }
     }
 
     /// <summary>
@@ -147,12 +204,42 @@ public class EnemySpawner : MonoBehaviour, IFreezable
 
             if (NavMesh.SamplePosition(candidate, out NavMeshHit hit, navMeshSampleDistance, areaMask))
             {
+                // 湧かない範囲に入っている場合は採用せず再抽選する
+                if (IsExcluded(hit.position)) continue;
+
                 result = hit.position;
                 return true;
             }
         }
 
         result = Vector3.zero;
+        return false;
+    }
+
+    /// <summary>
+    /// 指定した位置が湧き禁止範囲（内側半径または除外ゾーン）に含まれるかを判定する。
+    /// </summary>
+    private bool IsExcluded(Vector3 position)
+    {
+        // 中心からの内側除外半径チェック（XZ 平面）
+        if (exclusionInnerRadius > 0f)
+        {
+            Vector3 center = spawnPoint.position;
+            float dx = position.x - center.x;
+            float dz = position.z - center.z;
+            if (dx * dx + dz * dz <= exclusionInnerRadius * exclusionInnerRadius) return true;
+        }
+
+        // 個別の除外ゾーンチェック
+        if (exclusionZones != null)
+        {
+            for (int i = 0; i < exclusionZones.Count; i++)
+            {
+                var zone = exclusionZones[i];
+                if (zone != null && zone.radius > 0f && zone.Contains(position)) return true;
+            }
+        }
+
         return false;
     }
 

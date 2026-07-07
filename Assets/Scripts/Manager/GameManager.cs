@@ -23,6 +23,16 @@ public class GameManager : MonoBehaviour
     [Tooltip("ゲーム終了時にメインカメラを移動させる位置・向きを示す Transform。")]
     [SerializeField] private Transform resultCameraAnchor;
 
+    [Header("Player Death Effect")]
+    [Tooltip("被撃破時の全画面フラッシュ色。アルファがピーク不透明度（薄い半透明の赤）。")]
+    [SerializeField] private Color deathFlashColor = new Color(1f, 0f, 0f, 0.35f);
+    [Tooltip("被撃破演出（フラッシュ＋シェイク）の長さ（秒）。")]
+    [SerializeField] private float deathEffectDuration = 0.6f;
+    [Tooltip("被撃破シェイクの振幅（m）。")]
+    [SerializeField] private float deathShakeAmplitude = 0.2f;
+    [Tooltip("被撃破シェイクの周波数（Hz）。")]
+    [SerializeField] private float deathShakeFrequency = 25f;
+
     /// <summary>設定ポップアップの prefab。ESC 押下時に都度生成する。</summary>
     [SerializeField] private SettingsPopup settingsPopupPrefab;
 
@@ -54,6 +64,12 @@ public class GameManager : MonoBehaviour
         if (timerController != null)
             timerController.OnTimeUp
                 .Subscribe(_ => HandleTimeUp())
+                .AddTo(this);
+
+        // 寅などの攻撃でプレイヤーが死亡したらリザルトへ即時遷移する。
+        if (player != null)
+            player.OnDeath
+                .Subscribe(_ => HandlePlayerDeath())
                 .AddTo(this);
 
         // Skip(1) で ReactiveProperty の購読時初期値発火を無視する。
@@ -110,6 +126,57 @@ public class GameManager : MonoBehaviour
     private void HandleTimeUp()
     {
         HandleTimeUpAsync(this.GetCancellationTokenOnDestroy()).Forget();
+    }
+
+    /// <summary>プレイヤー死亡を検知したらリザルトへの即時遷移を開始する。</summary>
+    private void HandlePlayerDeath()
+    {
+        if (_isGameOver) return;
+        HandlePlayerDeathAsync(this.GetCancellationTokenOnDestroy()).Forget();
+    }
+
+    /// <summary>
+    /// プレイヤー死亡時の処理。タイムアップと異なり演出・遅延を挟まず、
+    /// スコア確定後ただちに ResultScene へ遷移する。
+    /// </summary>
+    /// <param name="ct">キャンセルトークン。</param>
+    private async UniTaskVoid HandlePlayerDeathAsync(CancellationToken ct)
+    {
+        _isGameOver = true;
+
+        // 入力・タイマー・スポーンを停止する。
+        mainSceneActivator?.DisableInput();
+        timerController?.Pause();
+        enemySpawner?.StopSpawning();
+
+        // スコアと経過タイムを ResultState に書き込む。
+        var finalScore = ScoreManager.Instance?.Score ?? 0;
+        if (resultState != null)
+        {
+            resultState.SetScore(finalScore);
+            resultState.SetElapsedTime(timerController?.ElapsedTime ?? 0f);
+        }
+
+        // unityroom のスコアボードへ送信（ゲーム終了時に1回だけ）。
+        SendScoreToUnityroom(finalScore);
+
+        // リザルト中は入力を完全に無効化する。
+        if (InputManager.Instance != null) InputManager.Instance.enabled = false;
+
+        // 被撃破演出：全画面を薄い赤でフラッシュしつつカメラをシェイクする。
+        // 入力（CameraController）は DisableInput 済みのためシェイクは上書きされない。
+        await PlayerDeathEffectView.PlayAsync(
+            _mainCamera, deathFlashColor, deathEffectDuration,
+            deathShakeAmplitude, deathShakeFrequency, ct);
+
+        // 演出後に ResultScene を additive でロード（MainScene はアンロードしない）。
+        SceneLoader.Instance?.GenericTransitionAsync(
+            config.GetSceneName(SceneType.Result),
+            fromSceneName: null,
+            config.FadeOutDuration,
+            fadeOut: null,
+            ct
+        ).Forget();
     }
 
     /// <summary>

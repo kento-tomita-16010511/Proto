@@ -1,8 +1,10 @@
 using UnityEngine;
+using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using UniRx;
 using System.Linq;
+using System.Threading;
 
 public class Player : MonoBehaviour, IFreezable
 {
@@ -49,6 +51,35 @@ public class Player : MonoBehaviour, IFreezable
 
     [SerializeField] private WebStunEffect _webStunEffect;
 
+    [SerializeField] private ParticleSystem _particleSystem;
+
+    [Header("Health Settings")]
+    [Tooltip("プレイヤーの最大HP。寅の攻撃ダメージがこれ以上なら一撃で死亡する。")]
+    [SerializeField] private int maxHP = 100;
+
+    /// <summary>Dissolve（崩壊）演出で溶かす対象のメッシュ。子の SkinnedMeshRenderer をアサインする。</summary>
+    [SerializeField] private SkinnedMeshRenderer _skinnedMeshRenderer;
+
+    /// <summary>撃破時に Dissolve（崩壊）させる秒数。</summary>
+    [SerializeField] private float _dissolveDuration = 0.25f;
+
+    /// <summary>シェーダーの _DissolveAmount プロパティID（Shader.PropertyToID でキャッシュ）。</summary>
+    private static readonly int DissolveAmountId = Shader.PropertyToID("_DissolveAmount");
+
+    /// <summary>現在のHP。</summary>
+    public int CurrentHP { get; private set; }
+
+    /// <summary>死亡時に1度だけ通知するイベント（GameManager がリザルト遷移を行う）。</summary>
+    public IObservable<Unit> OnDeath => _onDeath;
+    private readonly Subject<Unit> _onDeath = new Subject<Unit>();
+
+    /// <summary>噛みつき攻撃を開始した瞬間に通知するイベント（寅が回避反応に使う）。</summary>
+    public IObservable<Unit> OnAttackStarted => _onAttackStarted;
+    private readonly Subject<Unit> _onAttackStarted = new Subject<Unit>();
+
+    /// <summary>死亡済みかどうか。多重ダメージ・多重死亡を防ぐ。</summary>
+    private bool _isDead;
+
     private CharacterController _controller;
 
     /// <summary>ワールド空間のフル速度ベクトル（m/s）。グラップルの慣性をここに保持して持ち越す。</summary>
@@ -68,6 +99,10 @@ public class Player : MonoBehaviour, IFreezable
 
     /// <summary>アクション開始時刻。フェイルセーフのタイムアウト判定に使う。</summary>
     private float _actionStartTime;
+
+    /// <summary>個体ごとのマテリアルインスタンス。共有マテリアルを汚さないよう初回アクセスでキャッシュする。</summary>
+    private Material _dissolveMaterialInstance;
+
 
     public void SetInputEnabled(bool enabled)
     {
@@ -100,6 +135,10 @@ public class Player : MonoBehaviour, IFreezable
 
     void Awake()
     {
+        _particleSystem.gameObject.SetActive(false);
+        CurrentHP = maxHP;
+        _onDeath.AddTo(this);
+        _onAttackStarted.AddTo(this);
         _controller = GetComponent<CharacterController>();
 
         // Player 本体ではなく、Spider モデル側の Animator（コントローラ付き）を取得する
@@ -114,6 +153,53 @@ public class Player : MonoBehaviour, IFreezable
             .Where(_ => !_frozen)
             .Subscribe(_ => Tick())
             .AddTo(this);
+    }
+
+    /// <summary>
+    /// メッシュの Dissolve（崩壊）演出を再生する。
+    /// _DissolveAmount を 0→1 へ _dissolveDuration 秒かけて変化させ、完了後に本体を破棄する。
+    /// （将来オブジェクトプール化する際は Destroy を SetActive(false) へ変更を検討）
+    /// </summary>
+    /// <param name="ct">キャンセルトークン。</param>
+    public async UniTask PlayDissolveAsync(CancellationToken ct)
+    {
+        float elapsed = 0f;
+        while (elapsed < _dissolveDuration)
+        {
+            elapsed += Time.deltaTime;
+            SetDissolveAmount(Mathf.Clamp01(elapsed / _dissolveDuration));
+            await UniTask.Yield(PlayerLoopTiming.Update, ct);
+        }
+        SetDissolveAmount(1f);
+    }
+
+    /// <summary>
+    /// Dissolve 量（0=通常表示 / 1=完全消滅）をマテリアルに設定する（表示操作のみ）。
+    /// 他の敵に影響しないよう、共有マテリアルではなく個体インスタンス（renderer.material）に対して設定する。
+    /// </summary>
+    /// <param name="value">_DissolveAmount に設定する値（0〜1）。</param>
+    public void SetDissolveAmount(float value)
+    {
+        if (_skinnedMeshRenderer == null) return;
+
+        // 初回アクセスでマテリアルがインスタンス化される（共有マテリアルは書き換わらない）。
+        if (_dissolveMaterialInstance == null)
+            _dissolveMaterialInstance = _skinnedMeshRenderer.material;
+
+        if (_dissolveMaterialInstance.HasProperty(DissolveAmountId))
+            _dissolveMaterialInstance.SetFloat(DissolveAmountId, value);
+    }
+
+    /// <summary>
+    /// 破壊エフェクト（砕け散る VFX）を再生する。
+    /// DamageVFX 未アサインの場合は何もせず即完了する。
+    /// </summary>
+    public UniTask PlayDamageVFXAsync()
+    {
+        if (_particleSystem == null) return UniTask.CompletedTask;
+        _particleSystem.gameObject.SetActive(true);
+        _particleSystem.Play();
+        return UniTask.CompletedTask;
     }
 
     /// <summary>毎フレームの移動・アクション・ジャンプ処理。EveryUpdate から呼ばれる。</summary>
@@ -134,6 +220,7 @@ public class Player : MonoBehaviour, IFreezable
             BeginAction();
             SpawnEffect();
             _animator?.SetTrigger("AttackTrigger");
+            _onAttackStarted.OnNext(Unit.Default);
         }
         // 右クリック=Net。蜘蛛の巣アニメーションを発火し、重力落下する Net を射出する。
         else if (!_actionLocked && net && _webStunEffect != null)
@@ -359,6 +446,37 @@ public class Player : MonoBehaviour, IFreezable
         while (animator != null && animator.GetCurrentAnimatorStateInfo(0).normalizedTime < 1.0f)
             await UniTask.Yield(token);
         if (target != null) Destroy(target);
+    }
+
+    /// <summary>
+    /// ダメージを受ける処理（EnemyBasePresenter の死亡判定を移植）。
+    /// HP が 0 以下になったら Die() を呼ぶ。
+    /// </summary>
+    /// <param name="amount">ダメージ量。</param>
+    public void TakeDamage(int amount)
+    {
+        if (_isDead || CurrentHP <= 0) return;
+
+        CurrentHP -= amount;
+        if (CurrentHP <= 0) Die();
+    }
+
+    /// <summary>
+    /// 死亡処理。死亡通知を1度だけ発行し、移動を停止する。
+    /// リザルトシーンへの即時遷移は OnDeath を購読する GameManager 側で行う。
+    /// </summary>
+    public void Die()
+    {
+        if (_isDead) return;
+        _isDead = true;
+        CurrentHP = 0;
+
+        // 移動・アクションを停止（接地スナップで速度をリセット）。
+        _frozen = true;
+        _velocity = Vector3.down * 2f;
+        if (_animator != null) _animator.SetBool("IsMoving", false);
+        PlayDissolveAsync(this.GetCancellationTokenOnDestroy()).Forget();
+        _onDeath.OnNext(Unit.Default);
     }
 
     public void Freeze()

@@ -13,7 +13,7 @@ using UniRx;
 /// 判定①：左右の eyeTransforms を起点としたレイキャスト付き FOV 感知
 /// 判定②：ボディ中心からの近接全方位球体（近接感知）
 /// </summary>
-public class EnemyPresenter : EnemyBasePresenter
+public class EnemyPresenter : EnemyBasePresenter, IStunnable
 {
     /// <summary>検知パラメータ（敵ごとに専用の EnemyState.asset をアサインする）。</summary>
     [SerializeField, FormerlySerializedAs("enemyStateTemplate")]
@@ -31,8 +31,52 @@ public class EnemyPresenter : EnemyBasePresenter
     /// <summary>撃破時に Dissolve（崩壊）させる秒数。</summary>
     [SerializeField] private float _dissolveDuration = 0.25f;
 
+    [Header("Wander（通常時のランダム徘徊）")]
+    /// <summary>徘徊の目的地を選ぶ、初期位置からの半径（m）。</summary>
+    [Tooltip("徘徊の目的地を選ぶ、初期位置を中心とした半径（m）。")]
+    [SerializeField] private float wanderRadius = 8f;
+
+    /// <summary>徘徊（歩行）時の移動速度（m/s）。逃走より遅くする。</summary>
+    [Tooltip("徘徊（歩行）時の移動速度（m/s）。逃走より遅めにする。")]
+    [SerializeField] private float wanderSpeed = 2.5f;
+
+    /// <summary>徘徊時の加速度（m/s²）。</summary>
+    [Tooltip("徘徊時の加速度（m/s²）。")]
+    [SerializeField] private float wanderAcceleration = 8f;
+
+    /// <summary>徘徊時の旋回速度（度/秒）。</summary>
+    [Tooltip("徘徊時の旋回速度（度/秒）。")]
+    [SerializeField] private float wanderTurnSpeed = 240f;
+
+    /// <summary>目的地に到着したとみなす残距離（m）。</summary>
+    [Tooltip("徘徊の目的地に到着したとみなす残距離（m）。")]
+    [SerializeField] private float wanderArriveThreshold = 0.6f;
+
+    /// <summary>1 回の歩行を続ける時間の最小・最大（秒）。到達できなくてもこの時間で打ち切る。</summary>
+    [Tooltip("1 回の歩行を続ける時間の最小(x)・最大(y)（秒）。到達前でもこの時間で打ち切る。")]
+    [SerializeField] private Vector2 wanderWalkDuration = new Vector2(2f, 4f);
+
+    /// <summary>歩行後に立ち止まる時間の最小・最大（秒）。</summary>
+    [Tooltip("歩行後に立ち止まる時間の最小(x)・最大(y)（秒）。")]
+    [SerializeField] private Vector2 wanderPauseDuration = new Vector2(1f, 3f);
+
     private EnemyState _state;
     private Transform _player;
+
+    /// <summary>徘徊の中心とする初期位置。生成時の足元を記録する。</summary>
+    private Vector3 _wanderOrigin;
+
+    /// <summary>徘徊モードが有効か（逃走から戻った際の初期化判定に使う）。</summary>
+    private bool _wanderActive;
+
+    /// <summary>徘徊フェーズが「歩行中」か（false=立ち止まり中）。</summary>
+    private bool _wanderWalking;
+
+    /// <summary>現在の徘徊目的地（NavMesh 上）。</summary>
+    private Vector3 _wanderTarget;
+
+    /// <summary>現在の徘徊フェーズ（歩行/立ち止まり）を終える時刻（Time.time 基準）。</summary>
+    private float _wanderPhaseEndTime;
 
     /// <summary>現在逃走中かどうか。ヒステリシス判定に使う。</summary>
     private bool _isFleeing;
@@ -67,8 +111,10 @@ public class EnemyPresenter : EnemyBasePresenter
             return;
         }
         _player = playerObj.transform;
+        // 徘徊の中心は生成時の足元（以後この周辺をうろつく）。
+        _wanderOrigin = transform.position;
         Debug.Log($"[EnemyPresenter:{name}] Player 発見。FleeSpeed={_state.FleeSpeed} Accel={_state.FleeAcceleration}");
-        view.SetMovementParams(_state.FleeSpeed, _state.FleeAcceleration);
+        view.SetMovementParams(_state.FleeSpeed, _state.FleeAcceleration, _state.FleeTurnSpeed);
 
         _state.CurrentBehavior
             .Where(b => b == EnemyBehavior.Idle)
@@ -117,6 +163,7 @@ public class EnemyPresenter : EnemyBasePresenter
         if (!_isFleeing)
         {
             if (inFov || inProximity) BeginFlee();
+            else UpdateWander(); // 未検知時は常時ランダムに歩く⇔止まるを繰り返す
         }
         else
         {
@@ -169,6 +216,8 @@ public class EnemyPresenter : EnemyBasePresenter
         _isStunned = true;
         _stunEndTime = Time.time + _state.StunDuration;
         _isFleeing = false;
+        // スタン解除後は徘徊を初期化（立ち止まり）から再開させる。
+        _wanderActive = false;
         _state.SetBehavior(EnemyBehavior.Stunned);
         view.StopMoving();
 
@@ -223,8 +272,71 @@ public class EnemyPresenter : EnemyBasePresenter
     private void BeginFlee()
     {
         _isFleeing = true;
+        // 徘徊で書き換えた移動パラメータを逃走用へ戻す（次回の徘徊開始時に再設定される）。
+        _wanderActive = false;
+        view.SetMovementParams(_state.FleeSpeed, _state.FleeAcceleration, _state.FleeTurnSpeed);
         _state.SetBehavior(EnemyBehavior.Fleeing);
         view.SetDestination(CalcFleePosition());
+    }
+
+    /// <summary>
+    /// 未検知・非スタン時のランダム徘徊を更新する。
+    /// 「ランダムな地点まで歩く」→「ランダムな時間立ち止まる」を繰り返す。
+    /// 逃走から復帰した直後は移動パラメータを徘徊用へ切り替え、立ち止まりから開始する。
+    /// </summary>
+    private void UpdateWander()
+    {
+        // 逃走・スタンから戻った直後の初期化。徘徊速度を適用し、まず少し立ち止まる。
+        if (!_wanderActive)
+        {
+            _wanderActive = true;
+            _wanderWalking = false;
+            _wanderPhaseEndTime = Time.time + UnityEngine.Random.Range(wanderPauseDuration.x, wanderPauseDuration.y);
+            view.SetMovementParams(wanderSpeed, wanderAcceleration, wanderTurnSpeed);
+            view.StopMoving();
+            return;
+        }
+
+        if (_wanderWalking)
+        {
+            // 到着 or 時間切れで立ち止まりフェーズへ。
+            float remaining = Vector3.Distance(transform.position, _wanderTarget);
+            if (Time.time >= _wanderPhaseEndTime || remaining <= wanderArriveThreshold)
+            {
+                _wanderWalking = false;
+                _wanderPhaseEndTime = Time.time + UnityEngine.Random.Range(wanderPauseDuration.x, wanderPauseDuration.y);
+                view.StopMoving();
+            }
+        }
+        else
+        {
+            // 立ち止まり時間が過ぎたら次の目的地を選んで歩き出す。
+            if (Time.time >= _wanderPhaseEndTime) PickWanderDestination();
+        }
+    }
+
+    /// <summary>
+    /// 徘徊の次の目的地を初期位置周辺からランダムに選び、歩行を開始する。
+    /// NavMesh 上に有効な点が見つからない場合は短時間後に再試行する。
+    /// </summary>
+    private void PickWanderDestination()
+    {
+        Vector2 r = UnityEngine.Random.insideUnitCircle * wanderRadius;
+        Vector3 candidate = _wanderOrigin + new Vector3(r.x, 0f, r.y);
+
+        if (NavMesh.SamplePosition(candidate, out NavMeshHit hit, wanderRadius, NavMesh.AllAreas))
+        {
+            _wanderTarget = hit.position;
+            _wanderWalking = true;
+            _wanderPhaseEndTime = Time.time + UnityEngine.Random.Range(wanderWalkDuration.x, wanderWalkDuration.y);
+            view.SetMovementParams(wanderSpeed, wanderAcceleration, wanderTurnSpeed);
+            view.SetDestination(_wanderTarget);
+        }
+        else
+        {
+            // 有効点が見つからなければ少し待って再挑戦（立ち止まりのまま）。
+            _wanderPhaseEndTime = Time.time + 0.5f;
+        }
     }
 
     /// <summary>逃走を停止する。</summary>
