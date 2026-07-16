@@ -46,7 +46,9 @@ Claude Code と Codex CLI は本ファイルと `Docs/MapDesign.md` を介して
    `Docs/MapDesign.md` と `HospitalMapLayoutUtility.cs` を**必ず両方**更新する
 4. **見た目のクオリティアップ**: 仮Prefabを本番アセット(壁・床・ドアのモデル)に差し替える。
    生成ロジックは変更せず、`HospitalMapConfig.asset` のPrefab参照差し替えで対応する
-5. **プレイヤー・敵配置の調整**: スポーン位置をマップ内(廊下・部屋)に移動する
+5. **部屋単位の装飾**: `Assets/Prefab/Map/Areas/<エリア名>.prefab` を開いて編集する(設計書 4-2 参照)。
+   ツールの「部屋Prefabを作り直す」がOFFなら再生成しても編集内容は保持される
+6. **プレイヤー・敵配置の調整**: スポーン位置をマップ内(廊下・部屋)に移動する
 
 ### 禁止事項(マップ作業)
 

@@ -43,17 +43,7 @@ public static class PlaceholderPrefabUtility
     /// <summary>保存先フォルダを(無ければ)作成する</summary>
     private static void EnsureFolders()
     {
-        CreateFolderIfMissing("Assets", "Prefab");
-        CreateFolderIfMissing("Assets/Prefab", "Map");
-        CreateFolderIfMissing("Assets/Prefab/Map", "Placeholder");
-    }
-
-    /// <summary>指定フォルダが無ければ作成する</summary>
-    private static void CreateFolderIfMissing(string parent, string child)
-    {
-        if (AssetDatabase.IsValidFolder($"{parent}/{child}")) return;
-
-        AssetDatabase.CreateFolder(parent, child);
+        EditorFolderUtility.EnsureFolder(FolderPath);
     }
 
     /// <summary>単色マテリアルアセットを生成する(既存があれば再利用)</summary>

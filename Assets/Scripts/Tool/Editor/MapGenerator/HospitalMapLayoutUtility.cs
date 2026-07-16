@@ -55,6 +55,23 @@ public static class HospitalMapLayoutUtility
     }
 
     /// <summary>
+    /// レイアウトからエリアインデックスグリッドを構築する。
+    /// 各セルに Areas のインデックスが入り、屋外は EmptyZoneId になる。
+    /// 廊下交差部など複数エリアが重なるセルは先に定義されたエリアが所有する。
+    /// </summary>
+    /// <param name="layout">対象レイアウト</param>
+    /// <returns>セルごとのエリアインデックス配列</returns>
+    public static int[,] BuildAreaGrid(HospitalMapLayout layout)
+    {
+        var grid = CreateEmptyGrid(layout.GridWidth, layout.GridHeight);
+        for (var index = 0; index < layout.Areas.Count; index++)
+        {
+            ClaimZone(grid, layout.Areas[index].Bounds, index);
+        }
+        return grid;
+    }
+
+    /// <summary>
     /// レイアウトの整合性を検証し、エラーメッセージの一覧を返す(空なら正常)。
     /// </summary>
     /// <param name="layout">対象レイアウト</param>
@@ -208,6 +225,15 @@ public static class HospitalMapLayoutUtility
         foreach (var cell in EnumerateCells(bounds))
         {
             grid[cell.x, cell.y] = zoneId;
+        }
+    }
+
+    /// <summary>矩形内の未所有セルを指定エリアインデックスで塗りつぶす(所有済みセルは先勝ち)</summary>
+    private static void ClaimZone(int[,] grid, RectInt bounds, int areaIndex)
+    {
+        foreach (var cell in EnumerateCells(bounds))
+        {
+            if (grid[cell.x, cell.y] == EmptyZoneId) grid[cell.x, cell.y] = areaIndex;
         }
     }
 

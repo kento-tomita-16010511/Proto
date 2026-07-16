@@ -20,6 +20,9 @@ public class HospitalMapGeneratorWindow : EditorWindow
     /// <summary>生成時に既存Terrainを非アクティブ化するかどうか</summary>
     [SerializeField] private bool _deactivateTerrain = true;
 
+    /// <summary>生成時に既存のエリアPrefabを作り直すかどうか(OFFなら編集済みPrefabを保持して再利用)</summary>
+    [SerializeField] private bool _overwriteAreaPrefabs = false;
+
     /// <summary>ウィンドウのスクロール位置</summary>
     private Vector2 _scrollPosition;
 
@@ -72,6 +75,9 @@ public class HospitalMapGeneratorWindow : EditorWindow
     {
         EditorGUILayout.LabelField("3. マップ生成", EditorStyles.boldLabel);
         _deactivateTerrain = EditorGUILayout.Toggle("Terrainを非アクティブ化", _deactivateTerrain);
+        _overwriteAreaPrefabs = EditorGUILayout.Toggle(
+            new GUIContent("部屋Prefabを作り直す", "ONにすると既存のエリアPrefab(Assets/Prefab/Map/Areas)を作り直します。Prefabへの編集内容は失われます。OFFなら編集済みPrefabをそのまま再利用します。"),
+            _overwriteAreaPrefabs);
         if (GUILayout.Button("レイアウトを検証"))
         {
             RunValidation();
@@ -105,20 +111,11 @@ public class HospitalMapGeneratorWindow : EditorWindow
             _config = existing;
             return;
         }
-        CreateFolderIfMissing("Assets", "ScriptableObjects");
-        CreateFolderIfMissing("Assets/ScriptableObjects", "Map");
+        EditorFolderUtility.EnsureFolder("Assets/ScriptableObjects/Map");
         var config = CreateInstance<HospitalMapConfigModel>();
         AssetDatabase.CreateAsset(config, ConfigAssetPath);
         AssetDatabase.SaveAssets();
         _config = config;
-    }
-
-    /// <summary>指定フォルダが無ければ作成する</summary>
-    private static void CreateFolderIfMissing(string parent, string child)
-    {
-        if (AssetDatabase.IsValidFolder($"{parent}/{child}")) return;
-
-        AssetDatabase.CreateFolder(parent, child);
     }
 
     /// <summary>レイアウトを検証し、結果をダイアログとConsoleに出力する</summary>
@@ -142,7 +139,7 @@ public class HospitalMapGeneratorWindow : EditorWindow
         if (!ValidateBeforeGenerate()) return;
 
         RemoveExistingMap();
-        var root = HospitalMapGeneratorUtility.Generate(_config);
+        var root = HospitalMapGeneratorUtility.Generate(_config, _overwriteAreaPrefabs);
         Undo.RegisterCreatedObjectUndo(root, "Generate Hospital Map");
         if (_deactivateTerrain)
         {
